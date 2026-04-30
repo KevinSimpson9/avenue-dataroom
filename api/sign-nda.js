@@ -162,7 +162,7 @@ export default async function handler(req, res) {
     const password = process.env.DATA_ROOM_PASSWORD || '';
     const emailResult = await sendNdaEmail({
       to: formData.email,
-      bcc: process.env.NDA_NOTIFY_EMAIL || 'Kevin@AKCapital.fund',
+      bcc: process.env.NDA_NOTIFY_EMAIL || null,
       password,
       reference: docHash,
       investorName: formData.name,
