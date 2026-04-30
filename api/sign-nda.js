@@ -191,9 +191,11 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('sign-nda error:', err);
+    const detail = (err && (err.message || String(err))) || 'unknown';
     return res.status(500).json({
       ok: false,
-      message: 'Could not save NDA. Please try again, or contact Kevin@AKCapital.fund directly.'
+      message: 'Could not save NDA. Please try again, or contact Kevin@AKCapital.fund directly.',
+      _debug: detail.slice(0, 500)
     });
   }
 }
