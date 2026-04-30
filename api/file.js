@@ -26,15 +26,26 @@ export default function handler(req, res) {
     return res.status(404).json({ ok: false, message: 'Unknown document.' });
   }
 
-  const fileId = process.env[envVar];
-  if (!fileId) {
+  const value = process.env[envVar];
+  if (!value) {
     return res.status(404).json({
       ok: false,
       message: 'Document not yet uploaded. Contact Kevin@AKCapital.fund for access.'
     });
   }
 
-  // Return Drive viewer URL (works for any file that's shared "anyone with link")
-  const url = `https://drive.google.com/file/d/${fileId}/view`;
+  // Accept three formats:
+  //   1) A bare file ID (legacy) → /file/d/<id>/view
+  //   2) A bare folder ID prefixed with "folder:" → /drive/folders/<id>
+  //   3) A full Drive URL (file or folder) → returned as-is
+  let url;
+  const trimmed = value.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    url = trimmed;
+  } else if (trimmed.startsWith('folder:')) {
+    url = `https://drive.google.com/drive/folders/${trimmed.slice(7)}`;
+  } else {
+    url = `https://drive.google.com/file/d/${trimmed}/view`;
+  }
   return res.status(200).json({ ok: true, url });
 }
