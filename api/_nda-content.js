@@ -51,7 +51,7 @@ export const NDA_DISPLAY_HTML = `
 <p>
   <strong>16740 E. Ave of the Fountains LLC</strong><br>
   Name: Kevin Simpson<br>
-  Title: Owner / Investor Relations<br>
+  Title: Co-Developer / Investor Relations<br>
   Address: 213 Debbie Ln, Corbin, KY 40701<br>
   Phone: (606) 304-0607<br>
   Email: Kevin@AKCapital.fund
@@ -228,7 +228,7 @@ export async function buildSignedNdaPdf(formData, meta) {
   const dpRows = [
     ['Entity:', '16740 E. Ave of the Fountains LLC'],
     ['By:', 'Kevin Simpson'],
-    ['Title:', 'Owner / Investor Relations'],
+    ['Title:', 'Co-Developer / Investor Relations'],
     ['Address:', '213 Debbie Ln, Corbin, KY 40701'],
     ['Email:', 'Kevin@AKCapital.fund'],
     ['Date:', meta.dateLabel],
