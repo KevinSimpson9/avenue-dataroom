@@ -28,10 +28,12 @@ async function sendNdaEmail({ to, bcc, password, reference, investorName, pdfByt
   `;
   const text = `${greeting}\n\nThank you for signing the Mutual Non-Disclosure Agreement. A signed PDF copy is attached for your records.\n\nYour access password: ${password}\n\nVisit https://dataroom.theavenuefh.com and enter this password to view the deck and supporting documents.\n\nReference: ${reference}\nQuestions? Contact Kevin@AKCapital.fund.`;
 
+  const replyTo = process.env.RESEND_REPLY_TO || 'Kevin@AKCapital.fund';
   const payload = {
     from,
     to: [to],
     bcc: bcc ? [bcc] : undefined,
+    reply_to: replyTo,
     subject,
     html,
     text,
