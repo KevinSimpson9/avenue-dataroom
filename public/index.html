@@ -352,7 +352,7 @@
 
         <div class="signature-row">
           <label class="field-label" for="typedSignature">Typed Signature * <span style="text-transform:none; letter-spacing:0; color:var(--text-dim);">(type your full legal name exactly as entered above)</span></label>
-          <input class="field-input" type="text" id="typedSignature" name="typedSignature" required autocomplete="off">
+          <input class="field-input" type="text" id="typedSignature" name="typedSignature" required autocomplete="off" placeholder="John Hancock">
         </div>
 
         <button type="submit" class="sign-btn" id="signBtn">Sign NDA &amp; Receive Password</button>
@@ -447,10 +447,6 @@
   const signBtn = document.getElementById('signBtn');
   const nameInput = document.getElementById('name');
   const sigInput = document.getElementById('typedSignature');
-
-  nameInput.addEventListener('blur', () => {
-    if (nameInput.value && !sigInput.value) sigInput.placeholder = nameInput.value;
-  });
 
   ndaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
