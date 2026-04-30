@@ -1,8 +1,64 @@
-// /api/sign-nda - Records a signed NDA: validates form, generates PDF, saves to Drive, issues session cookie
+// /api/sign-nda - Records a signed NDA: validates form, generates PDF, saves to Drive,
+// emails investor + Kevin, issues session cookie
 import crypto from 'crypto';
 import { Readable } from 'stream';
 import { google } from 'googleapis';
 import { buildSignedNdaPdf } from './_nda-content.js';
+
+async function sendNdaEmail({ to, bcc, password, reference, investorName, pdfBytes, pdfFilename }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { sent: false, reason: 'RESEND_API_KEY not configured' };
+
+  const from = process.env.RESEND_FROM_EMAIL || 'The Avenue <onboarding@resend.dev>';
+  const subject = 'The Avenue at Fountain Hills — Data Room Access';
+  const greeting = investorName ? `Hello ${investorName.split(' ')[0]},` : 'Hello,';
+  const html = `
+    <div style="font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; color: #1a1816; line-height: 1.55;">
+      <h2 style="font-family: Georgia, serif; color: #2A6068; margin-bottom: 4px;">The Avenue at Fountain Hills</h2>
+      <p style="color: #888; font-size: 13px; margin-top: 0;">Investor Data Room</p>
+      <p>${greeting}</p>
+      <p>Thank you for signing the Mutual Non-Disclosure Agreement. A signed PDF copy is attached for your records.</p>
+      <p>Your access password to the investor data room:</p>
+      <div style="background: #F5EFE6; border-left: 4px solid #D4A24A; padding: 16px 20px; margin: 18px 0; font-family: monospace; font-size: 18px; letter-spacing: 1px;">
+        ${password}
+      </div>
+      <p>Visit <a href="https://dataroom.theavenuefh.com" style="color:#2A6068;">dataroom.theavenuefh.com</a> and enter this password to view the deck and supporting documents.</p>
+      <p style="color: #888; font-size: 12px; margin-top: 28px;">Reference: ${reference}<br>If you have any questions, reply to this email or contact Kevin Simpson directly at Kevin@AKCapital.fund.</p>
+    </div>
+  `;
+  const text = `${greeting}\n\nThank you for signing the Mutual Non-Disclosure Agreement. A signed PDF copy is attached for your records.\n\nYour access password: ${password}\n\nVisit https://dataroom.theavenuefh.com and enter this password to view the deck and supporting documents.\n\nReference: ${reference}\nQuestions? Contact Kevin@AKCapital.fund.`;
+
+  const payload = {
+    from,
+    to: [to],
+    bcc: bcc ? [bcc] : undefined,
+    subject,
+    html,
+    text,
+    attachments: pdfBytes ? [{
+      filename: pdfFilename,
+      content: Buffer.from(pdfBytes).toString('base64')
+    }] : undefined
+  };
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      return { sent: false, reason: `Resend ${res.status}: ${errBody.slice(0, 200)}` };
+    }
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, reason: err.message };
+  }
+}
 
 export const config = {
   api: {
@@ -99,6 +155,21 @@ export default async function handler(req, res) {
       fields: 'id, name'
     });
 
+    // Send confirmation email with password + signed PDF (best-effort; failures don't block signing)
+    const password = process.env.DATA_ROOM_PASSWORD || '';
+    const emailResult = await sendNdaEmail({
+      to: formData.email,
+      bcc: process.env.NDA_NOTIFY_EMAIL || 'Kevin@AKCapital.fund',
+      password,
+      reference: docHash,
+      investorName: formData.name,
+      pdfBytes,
+      pdfFilename: filename
+    });
+    if (!emailResult.sent) {
+      console.warn('NDA email not sent:', emailResult.reason);
+    }
+
     // Issue session cookie (7-day expiry, same format as unlock.js)
     const expires = Date.now() + (1000 * 60 * 60 * 24 * 7);
     const signature = crypto
@@ -112,7 +183,9 @@ export default async function handler(req, res) {
       ok: true,
       message: 'NDA recorded.',
       signedAt: timestampIso,
-      reference: docHash
+      reference: docHash,
+      password,
+      emailSent: emailResult.sent
     });
   } catch (err) {
     console.error('sign-nda error:', err);
