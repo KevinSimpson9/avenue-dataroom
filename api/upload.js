@@ -68,7 +68,8 @@ export default async function handler(req, res) {
           mimeType: file.mimetype || 'application/octet-stream',
           body: fs.createReadStream(file.filepath)
         },
-        fields: 'id, name, webViewLink'
+        fields: 'id, name, webViewLink',
+        supportsAllDrives: true
       });
 
       uploaded.push({

@@ -154,7 +154,8 @@ export default async function handler(req, res) {
         mimeType: 'application/pdf',
         body: Readable.from(Buffer.from(pdfBytes))
       },
-      fields: 'id, name'
+      fields: 'id, name',
+      supportsAllDrives: true
     });
 
     // Send confirmation email with password + signed PDF (best-effort; failures don't block signing)
