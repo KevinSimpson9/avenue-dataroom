@@ -321,7 +321,7 @@
         <div class="form-grid">
           <div class="full">
             <label class="field-label" for="name">Full Legal Name *</label>
-            <input class="field-input" type="text" id="name" name="name" required autocomplete="name" placeholder="e.g. Jane A. Investor">
+            <input class="field-input" type="text" id="name" name="name" required autocomplete="name" placeholder="John Hancock">
           </div>
           <div>
             <label class="field-label" for="email">Email *</label>
@@ -447,6 +447,11 @@
   const signBtn = document.getElementById('signBtn');
   const nameInput = document.getElementById('name');
   const sigInput = document.getElementById('typedSignature');
+
+  // Live-mirror name into signature field as user types
+  nameInput.addEventListener('input', () => {
+    sigInput.value = nameInput.value;
+  });
 
   ndaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
