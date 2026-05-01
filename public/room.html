@@ -358,6 +358,31 @@
     border-radius: 12px;
     padding: 22px 24px;
   }
+  .principal-card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .principal-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(212, 162, 74, 0.16);
+    color: #D4A24A;
+    border: 1px solid rgba(212, 162, 74, 0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .principal-card-head .principal-role { margin-bottom: 4px; }
+  .principal-card-head .principal-name { margin-bottom: 2px; }
+  .principal-card-head .principal-org { margin-bottom: 0; }
   .principal-role {
     font-size: 11px;
     letter-spacing: 0.2em;
@@ -415,9 +440,9 @@
   </div>
 
   <div class="room-hero">
-    <div class="eyebrow">Fountain Hills · Arizona</div>
-    <h1 class="room-title">Six luxury townhomes.<br><em>One opportunity.</em></h1>
-    <p class="room-subtitle">Boutique four-story residences in downtown Fountain Hills, just east of Scottsdale. Shovel-ready, financed, and one unit reserved at $2.412M.</p>
+    <div class="eyebrow">Avenue of the Fountains · Fountain Hills, Arizona</div>
+    <h1 class="room-title">A $350,000 senior secured note,<br><em>backed by a $15.42M asset.</em></h1>
+    <p class="room-subtitle">20% APR · personal guarantee · 24× coverage. A fully entitled six-unit luxury townhome development with senior debt committed and ground-breaking imminent. Closes May 15, 2026.</p>
   </div>
 
   <div class="stat-strip">
@@ -449,13 +474,9 @@
     </div>
     <div class="overview-narrative" style="max-width: 820px;">
       <p>
-        <strong>$350,000 capital raise at 20% APR</strong>, secured by a personal guarantee from
-        the developer and a 24× coverage ratio against a $15.42M certified appraisal.
-      </p>
-      <p>
-        Proceeds close the equity gap on a fully entitled, six-unit luxury townhome development
-        on Avenue of the Fountains in downtown Fountain Hills, Arizona. Senior construction
-        financing of $6.75M is committed; funding deadline is May 15, 2026.
+        Proceeds close the equity gap on a six-unit luxury townhome development in downtown
+        Fountain Hills — fully entitled, with $6.75M in senior construction financing committed
+        and one unit pre-reserved at <strong>$2.412M</strong>.
       </p>
     </div>
 
@@ -554,15 +575,25 @@
     </div>
     <div class="principal-grid">
       <div class="principal-card">
-        <div class="principal-role">Co-Developer · Construction</div>
-        <div class="principal-name">Lukas Bondy</div>
-        <div class="principal-org">Bondy Construction &amp; Design</div>
+        <div class="principal-card-head">
+          <div class="principal-avatar">LB</div>
+          <div>
+            <div class="principal-role">Co-Developer · Construction</div>
+            <div class="principal-name">Lukas Bondy</div>
+            <div class="principal-org">Bondy Construction &amp; Design</div>
+          </div>
+        </div>
         <p class="principal-bio">Construction lead on The Avenue. ~110 homes built across Arizona. Personal guarantor on the senior note.</p>
       </div>
       <div class="principal-card">
-        <div class="principal-role">Co-Developer · Investor Relations</div>
-        <div class="principal-name">Kevin Simpson</div>
-        <div class="principal-org">AK Capital Investments</div>
+        <div class="principal-card-head">
+          <div class="principal-avatar">KS</div>
+          <div>
+            <div class="principal-role">Co-Developer · Investor Relations</div>
+            <div class="principal-name">Kevin Simpson</div>
+            <div class="principal-org">AK Capital Investments</div>
+          </div>
+        </div>
         <p class="principal-bio">Capital structuring, investor relations, and reporting on The Avenue.</p>
         <a href="mailto:Kevin@AKCapital.fund" class="principal-link">Kevin@AKCapital.fund</a>
       </div>
