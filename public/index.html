@@ -252,6 +252,7 @@
       </div>
       <div class="error-msg" id="errorMsg"></div>
       <button type="submit" class="unlock-btn" id="unlockBtn">Unlock Data Room</button>
+      <button type="button" class="get-password-btn" id="getPasswordBtn">Need access? Get password →</button>
     </form>
 
     <div class="nda-card">
@@ -448,6 +449,7 @@
     document.body.style.overflow = '';
   }
   openBtn.addEventListener('click', openModal);
+  document.getElementById('getPasswordBtn').addEventListener('click', openModal);
   closeBtn.addEventListener('click', closeModal);
   backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal(); });

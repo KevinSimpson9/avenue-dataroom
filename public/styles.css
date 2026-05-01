@@ -166,6 +166,23 @@ html, body {
 .unlock-btn:disabled { opacity: 0.6; cursor: wait; }
 .unlock-btn:active { transform: translateY(1px); }
 
+.get-password-btn {
+  width: 100%;
+  margin-top: -20px;
+  margin-bottom: 32px;
+  padding: 14px;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.get-password-btn:hover { background: var(--gold); color: white; }
+
 .nda-card {
   background: rgba(0, 0, 0, 0.12);
   border: 1px solid var(--teal-border);
