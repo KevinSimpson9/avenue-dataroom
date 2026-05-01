@@ -11,7 +11,6 @@ const DOC_MAP = {
   'approvals':    'DRIVE_FILE_APPROVALS',
   'budget':       'DRIVE_FILE_BUDGET',
   'plans':        'DRIVE_FILE_PLANS',
-  'reservation':  'DRIVE_FILE_RESERVATION',
   'track-record': 'DRIVE_FILE_TRACK_RECORD'
 };
 
@@ -85,7 +84,7 @@ export default async function handler(req, res) {
   if (!value) {
     return res.status(404).json({
       ok: false,
-      message: 'Document not yet uploaded. Contact Kevin@AKCapital.fund for access.'
+      message: 'Will update soon.'
     });
   }
 
