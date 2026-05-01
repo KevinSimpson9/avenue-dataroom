@@ -1,6 +1,7 @@
-// /api/file - Returns Google Drive share URL for a given document key
-// Drive file IDs are stored as environment variables on Vercel
+// /api/file - Resolves a document key to a Drive viewer URL or, for folder-typed slots,
+// returns the list of files inside the folder so the room can render an in-app picker.
 import { verifySession } from './_auth.js';
+import { google } from 'googleapis';
 
 const DOC_MAP = {
   'deck':         'DRIVE_FILE_DECK',
@@ -14,14 +15,45 @@ const DOC_MAP = {
   'track-record': 'DRIVE_FILE_TRACK_RECORD'
 };
 
-export default function handler(req, res) {
+function fileViewerUrl(id) {
+  return `https://drive.google.com/file/d/${id}/view`;
+}
+
+async function listFolderItems(folderId) {
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) throw new Error('Service account not configured');
+
+  const credentials = JSON.parse(serviceAccountKey);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/drive.readonly']
+  });
+  const drive = google.drive({ version: 'v3', auth });
+
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: 'files(id, name, mimeType, webViewLink)',
+    orderBy: 'name',
+    pageSize: 200,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: 'allDrives'
+  });
+
+  return (response.data.files || []).map(f => ({
+    name: f.name,
+    mimeType: f.mimeType,
+    url: f.webViewLink || fileViewerUrl(f.id)
+  }));
+}
+
+export default async function handler(req, res) {
   if (!verifySession(req)) {
     return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
 
   const docKey = req.query.doc;
   const envVar = DOC_MAP[docKey];
-
   if (!envVar) {
     return res.status(404).json({ ok: false, message: 'Unknown document.' });
   }
@@ -34,18 +66,30 @@ export default function handler(req, res) {
     });
   }
 
-  // Accept three formats:
-  //   1) A bare file ID (legacy) → /file/d/<id>/view
-  //   2) A bare folder ID prefixed with "folder:" → /drive/folders/<id>
-  //   3) A full Drive URL (file or folder) → returned as-is
-  let url;
   const trimmed = value.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    url = trimmed;
-  } else if (trimmed.startsWith('folder:')) {
-    url = `https://drive.google.com/drive/folders/${trimmed.slice(7)}`;
-  } else {
-    url = `https://drive.google.com/file/d/${trimmed}/view`;
+
+  // Folder-typed slot → return list of files for in-app picker
+  if (trimmed.startsWith('folder:')) {
+    const folderId = trimmed.slice(7);
+    try {
+      const items = await listFolderItems(folderId);
+      return res.status(200).json({ ok: true, type: 'folder', items });
+    } catch (err) {
+      console.error('folder list error:', err);
+      // Fallback: send the user to the Drive folder browser
+      return res.status(200).json({
+        ok: true,
+        type: 'url',
+        url: `https://drive.google.com/drive/folders/${folderId}`
+      });
+    }
   }
-  return res.status(200).json({ ok: true, url });
+
+  // Full URL passthrough
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return res.status(200).json({ ok: true, type: 'url', url: trimmed });
+  }
+
+  // Bare file ID
+  return res.status(200).json({ ok: true, type: 'url', url: fileViewerUrl(trimmed) });
 }

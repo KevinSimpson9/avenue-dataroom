@@ -9,6 +9,96 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
+<style>
+  .folder-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 22, 26, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1000;
+    padding: 32px 16px;
+    overflow-y: auto;
+  }
+  .folder-modal-backdrop.open { display: flex; }
+  .folder-modal {
+    width: 100%;
+    max-width: 640px;
+    background: linear-gradient(160deg, #1F4A52 0%, #2A6068 100%);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 28px 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    margin: auto;
+  }
+  .folder-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .folder-modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #F5EFE6;
+  }
+  .folder-modal-sub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .folder-close {
+    background: transparent; border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.6);
+    width: 32px; height: 32px;
+    border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .folder-close:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.92); }
+  .folder-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 480px;
+    overflow-y: auto;
+  }
+  .folder-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    color: rgba(255,255,255,0.92);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .folder-item:hover { border-color: #D4A24A; background: rgba(212,162,74,0.06); }
+  .folder-item .ficon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: rgba(212,162,74,0.15);
+    color: #D4A24A;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .folder-item .fname {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    word-break: break-word;
+  }
+  .folder-item .fext {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .folder-empty, .folder-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+  }
+</style>
 </head>
 <body>
 
@@ -202,19 +292,80 @@
   </div>
 </div>
 
+<!-- Folder picker modal -->
+<div class="folder-modal-backdrop" id="folderBackdrop" role="dialog" aria-modal="true">
+  <div class="folder-modal">
+    <div class="folder-modal-header">
+      <div>
+        <div class="folder-modal-title" id="folderModalTitle">Documents</div>
+        <div class="folder-modal-sub">Click any file to open in a new tab</div>
+      </div>
+      <button type="button" class="folder-close" id="folderCloseBtn" aria-label="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <ul class="folder-list" id="folderList"></ul>
+  </div>
+</div>
+
 <script>
+  const folderBackdrop = document.getElementById('folderBackdrop');
+  const folderList = document.getElementById('folderList');
+  const folderTitle = document.getElementById('folderModalTitle');
+
+  function openFolderModal(title) {
+    folderTitle.textContent = title || 'Documents';
+    folderList.innerHTML = '<div class="folder-loading">Loading…</div>';
+    folderBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeFolderModal() {
+    folderBackdrop.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function fileExt(name) {
+    const m = (name || '').match(/\.([^.]+)$/);
+    return m ? m[1].toUpperCase() : '';
+  }
+  function renderFolderItems(items) {
+    if (!items || items.length === 0) {
+      folderList.innerHTML = '<div class="folder-empty">No files in this folder yet.</div>';
+      return;
+    }
+    folderList.innerHTML = items.map(item => `
+      <a class="folder-item" href="${item.url}" target="_blank" rel="noopener">
+        <div class="ficon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="fname">${item.name.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c])}</div>
+        <div class="fext">${fileExt(item.name)}</div>
+      </a>
+    `).join('');
+  }
+
+  document.getElementById('folderCloseBtn').addEventListener('click', closeFolderModal);
+  folderBackdrop.addEventListener('click', e => { if (e.target === folderBackdrop) closeFolderModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && folderBackdrop.classList.contains('open')) closeFolderModal(); });
+
   // Resolve Drive links via API endpoint
   document.querySelectorAll('.drive-link').forEach(link => {
     link.addEventListener('click', async (e) => {
       e.preventDefault();
       const docKey = link.dataset.doc;
+      const tileLabel = (link.querySelector('.doc-name, .card-title, .doc-title') || {}).textContent
+        || link.textContent.trim().split('\n')[0] || 'Documents';
       try {
         const res = await fetch(`/api/file?doc=${encodeURIComponent(docKey)}`);
         const data = await res.json();
-        if (data.url) {
-          window.open(data.url, '_blank', 'noopener');
-        } else {
+        if (!data.ok) {
           alert(data.message || 'Document not yet available. Contact Kevin for access.');
+          return;
+        }
+        if (data.type === 'folder') {
+          openFolderModal(tileLabel);
+          renderFolderItems(data.items);
+        } else if (data.url) {
+          window.open(data.url, '_blank', 'noopener');
         }
       } catch (err) {
         alert('Unable to open document. Please try again or contact Kevin@AKCapital.fund');
