@@ -77,19 +77,25 @@ export default async function handler(req, res) {
     const drive = google.drive({ version: 'v3', auth });
 
     // sign-nda.js stores `Signed by <Name> <email@x.com> on ...` in each file's description.
-    // fullText search covers description and indexed content; restrict to this folder.
-    const escapedEmail = email.replace(/'/g, "\\'");
-    const list = await drive.files.list({
-      q: `'${ndaFolderId}' in parents and trashed = false and fullText contains '${escapedEmail}'`,
-      fields: 'files(id, name, description)',
-      pageSize: 25,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true
-    });
-
-    const matches = (list.data.files || []).filter(f =>
-      (f.description || '').toLowerCase().includes(email)
-    );
+    // fullText search doesn't reliably index PDF descriptions, so list everything in the
+    // folder and filter by description in JS. Folder is small (one file per investor).
+    const matches = [];
+    let pageToken;
+    do {
+      const list = await drive.files.list({
+        q: `'${ndaFolderId}' in parents and trashed = false`,
+        fields: 'nextPageToken, files(id, name, description, createdTime)',
+        pageSize: 200,
+        pageToken,
+        orderBy: 'createdTime desc',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true
+      });
+      for (const f of (list.data.files || [])) {
+        if ((f.description || '').toLowerCase().includes(email)) matches.push(f);
+      }
+      pageToken = list.data.nextPageToken;
+    } while (pageToken);
 
     if (matches.length === 0) {
       return res.status(200).json({ ok: true, registered: false });
