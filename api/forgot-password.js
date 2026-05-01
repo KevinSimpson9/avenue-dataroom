@@ -1,6 +1,6 @@
 // /api/forgot-password - If the email previously signed an NDA, re-send the data room password.
 // Otherwise tell the client the email is not registered (frontend redirects to NDA flow).
-import { google } from 'googleapis';
+import { loadRegistry, hasEmail } from './_nda-registry.js';
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -69,45 +69,13 @@ export default async function handler(req, res) {
   await new Promise(r => setTimeout(r, 600));
 
   try {
-    const credentials = JSON.parse(serviceAccountKey);
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.file']
-    });
-    const drive = google.drive({ version: 'v3', auth });
-
-    // sign-nda.js stores `Signed by <Name> <email@x.com> on ...` in each file's description.
-    // fullText search doesn't reliably index PDF descriptions, so list everything in the
-    // folder and filter by description in JS. Folder is small (one file per investor).
-    const matches = [];
-    let pageToken;
-    do {
-      const list = await drive.files.list({
-        q: `'${ndaFolderId}' in parents and trashed = false`,
-        fields: 'nextPageToken, files(id, name, description, createdTime)',
-        pageSize: 200,
-        pageToken,
-        orderBy: 'createdTime desc',
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true
-      });
-      for (const f of (list.data.files || [])) {
-        if ((f.description || '').toLowerCase().includes(email)) matches.push(f);
-      }
-      pageToken = list.data.nextPageToken;
-    } while (pageToken);
-
-    if (matches.length === 0) {
+    const { registry } = await loadRegistry();
+    const entry = hasEmail(registry, email);
+    if (!entry) {
       return res.status(200).json({ ok: true, registered: false });
     }
 
-    // Pull the investor name out of the most recent matching file's description for the greeting
-    let investorName = '';
-    const desc = matches[0].description || '';
-    const m = desc.match(/Signed by\s+(.+?)\s+<([^>]+)>/i);
-    if (m) investorName = m[1].trim();
-
-    const emailResult = await sendPasswordEmail({ to: email, password, investorName });
+    const emailResult = await sendPasswordEmail({ to: email, password, investorName: entry.name || '' });
     if (!emailResult.sent) {
       console.warn('forgot-password email not sent:', emailResult.reason);
       return res.status(500).json({ ok: false, message: 'Could not send email. Please try again or contact Kevin@AKCapital.fund.' });

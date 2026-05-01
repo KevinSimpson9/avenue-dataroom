@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { Readable } from 'stream';
 import { google } from 'googleapis';
 import { buildSignedNdaPdf } from './_nda-content.js';
+import { appendSigning } from './_nda-registry.js';
 
 async function sendNdaEmail({ to, bcc, password, reference, investorName, pdfBytes, pdfFilename }) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -171,6 +172,19 @@ export default async function handler(req, res) {
     });
     if (!emailResult.sent) {
       console.warn('NDA email not sent:', emailResult.reason);
+    }
+
+    // Append to authoritative registry (powers /api/forgot-password lookups).
+    // Best-effort: registry write failures don't block signing.
+    try {
+      await appendSigning({
+        email: formData.email,
+        name: formData.name,
+        signedAt: timestampIso,
+        reference: docHash
+      });
+    } catch (regErr) {
+      console.warn('NDA registry append failed:', regErr.message);
     }
 
     // Issue session cookie (7-day expiry, same format as unlock.js)
