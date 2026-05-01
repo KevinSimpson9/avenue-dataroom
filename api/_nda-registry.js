@@ -46,14 +46,47 @@ async function readRegistryFile(drive, fileId) {
   }
 }
 
-async function bootstrapFromFolder(drive, folderId) {
+async function downloadFileBuffer(drive, fileId) {
+  const res = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' }
+  );
+  return Buffer.from(res.data);
+}
+
+async function extractEmailFromPdf(drive, fileId) {
+  try {
+    // Lazy-load pdf-parse so the registry module stays cheap when unused
+    const { default: pdfParse } = await import('pdf-parse');
+    const buf = await downloadFileBuffer(drive, fileId);
+    const parsed = await pdfParse(buf);
+    const text = parsed.text || '';
+    const emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if (!emailMatch) return null;
+    // Best-effort name extraction: NDAs typically include "Name: <Full Name>" or list
+    // the typed signature. Try a few patterns; fall back to empty.
+    let name = '';
+    const nm =
+      text.match(/Name:\s*([^\n\r]+)/i) ||
+      text.match(/Receiving Party:\s*([^\n\r]+)/i) ||
+      text.match(/Signature:\s*([^\n\r]+)/i);
+    if (nm) name = nm[1].trim().slice(0, 120);
+    return { email: emailMatch[0].toLowerCase(), name };
+  } catch (err) {
+    console.warn('pdf text extract failed for', fileId, err.message);
+    return null;
+  }
+}
+
+export async function bootstrapFromFolder(drive, folderId, { scrapePdfs = true } = {}) {
   const entries = [];
   const seen = new Set();
+  const files = [];
   let pageToken;
   do {
     const list = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, description, createdTime)',
+      fields: 'nextPageToken, files(id, name, description, mimeType, createdTime)',
       pageSize: 200,
       pageToken,
       orderBy: 'createdTime',
@@ -62,21 +95,35 @@ async function bootstrapFromFolder(drive, folderId) {
     });
     for (const f of (list.data.files || [])) {
       if (f.name === REGISTRY_FILENAME) continue;
-      const desc = f.description || '';
-      const m = desc.match(/Signed by\s+(.+?)\s+<([^>]+)>\s+on\s+(\S+)/i);
-      if (!m) continue;
-      const email = m[2].trim().toLowerCase();
-      if (seen.has(email)) continue;
-      seen.add(email);
-      entries.push({
-        email,
-        name: m[1].trim(),
-        signedAt: m[3],
-        reference: ''
-      });
+      files.push(f);
     }
     pageToken = list.data.nextPageToken;
   } while (pageToken);
+
+  for (const f of files) {
+    let email = '';
+    let name = '';
+    let signedAt = f.createdTime || '';
+
+    const desc = f.description || '';
+    const dm = desc.match(/Signed by\s+(.+?)\s+<([^>]+)>\s+on\s+(\S+)/i);
+    if (dm) {
+      name = dm[1].trim();
+      email = dm[2].trim().toLowerCase();
+      signedAt = dm[3];
+    } else if (scrapePdfs && (f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name))) {
+      const scraped = await extractEmailFromPdf(drive, f.id);
+      if (scraped) {
+        email = scraped.email;
+        name = scraped.name;
+      }
+    }
+
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    entries.push({ email, name, signedAt, reference: '' });
+  }
+
   return { entries, updatedAt: new Date().toISOString() };
 }
 
@@ -103,6 +150,8 @@ async function writeRegistryFile(drive, folderId, existingFileId, registry) {
   });
   return created.data.id;
 }
+
+export { findRegistryFile, writeRegistryFile, getDrive };
 
 // Load the registry, bootstrapping (and persisting) from PDF descriptions if missing.
 export async function loadRegistry() {
