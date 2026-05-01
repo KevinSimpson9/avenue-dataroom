@@ -300,8 +300,63 @@
     margin-top: 2px;
   }
 
+  /* 3-column action card grid for document tiles */
+  .actions.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .actions.cols-3 .action-card { padding: 24px; }
+  .actions.cols-3 .action-card .card-title { font-size: 22px; }
+
+  /* Deck CTA sits inside the opportunity section */
+  .deck-cta {
+    margin-top: 32px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, rgba(212, 162, 74, 0.14) 0%, rgba(212, 162, 74, 0.04) 100%);
+    border: 1px solid rgba(212, 162, 74, 0.35);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .deck-cta:hover {
+    border-color: #D4A24A;
+    background: linear-gradient(135deg, rgba(212, 162, 74, 0.20) 0%, rgba(212, 162, 74, 0.08) 100%);
+  }
+  .deck-cta-text { flex: 1; }
+  .deck-cta-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 6px;
+  }
+  .deck-cta-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #F5EFE6;
+    margin-bottom: 4px;
+  }
+  .deck-cta-title em { font-style: italic; color: #D4A24A; }
+  .deck-cta-sub { font-size: 14px; color: rgba(255, 255, 255, 0.65); }
+  .deck-cta-btn {
+    flex-shrink: 0;
+    background: #D4A24A;
+    color: #1A1816;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
   @media (max-width: 880px) {
     .overview-grid { grid-template-columns: 1fr; gap: 24px; }
+    .actions.cols-3 { grid-template-columns: 1fr; }
+    .deck-cta { flex-direction: column; align-items: flex-start; padding: 22px; }
+    .deck-cta-btn { align-self: stretch; text-align: center; }
   }
 </style>
 </head>
@@ -346,9 +401,10 @@
     </div>
   </div>
 
+  <!-- ===== 01 The Opportunity ===== -->
   <section class="room-section">
     <div class="section-head">
-      <h2>Project overview</h2>
+      <h2>The opportunity</h2>
       <span class="section-num">— 01</span>
     </div>
     <div class="overview-grid">
@@ -365,7 +421,6 @@
           secured by a personal guarantee, with a <strong>24× coverage ratio</strong> against a
           <strong>$15.42M</strong> certified appraisal.
         </p>
-        <a href="#" data-doc="deck" class="overview-cta drive-link">View full deck →</a>
       </div>
       <ul class="highlight-list">
         <li>
@@ -405,90 +460,122 @@
         </li>
       </ul>
     </div>
+
+    <a href="#" data-doc="deck" class="deck-cta drive-link">
+      <div class="deck-cta-text">
+        <div class="deck-cta-eyebrow">Investor Deck · 14 slides · Updated April 2026</div>
+        <div class="deck-cta-title">Read the full <em>investor overview</em></div>
+        <div class="deck-cta-sub">Capital stack, distribution waterfall, project timeline, team bios, and risk mitigation.</div>
+      </div>
+      <span class="deck-cta-btn">View Deck →</span>
+    </a>
   </section>
 
+  <!-- ===== 02 Financial Validation ===== -->
   <section class="room-section">
     <div class="section-head">
-      <h2>Start here</h2>
+      <h2>Financial validation</h2>
       <span class="section-num">— 02</span>
     </div>
-    <div class="actions">
-      <a href="#" data-doc="deck" class="action-card featured drive-link">
-        <div class="card-eyebrow">Investment Deck</div>
-        <div class="card-title">Investor <em>Overview</em></div>
-        <p class="card-desc">Full deal summary, capital stack, distribution waterfall, project timeline, team bios, and risk mitigation. 14 slides. Updated April 2026.</p>
-        <span class="card-btn">View Deck →</span>
+    <div class="actions cols-3">
+      <a href="#" data-doc="appraisal" class="action-card drive-link">
+        <div class="card-eyebrow">Independent Appraisal</div>
+        <div class="card-title">$15.42<em>M</em><br>certified</div>
+        <p class="card-desc">Q1 2026 third-party valuation. Backs the 24× coverage ratio on the current investor raise.</p>
+        <span class="card-btn outline">View Appraisal →</span>
+      </a>
+      <a href="#" data-doc="casa" class="action-card drive-link">
+        <div class="card-eyebrow">Senior Construction Loan</div>
+        <div class="card-title">$6.75<em>M</em><br>term sheet</div>
+        <p class="card-desc">Casa Lending construction loan committed at 9.75%. Senior to investor capital, drawn during build.</p>
+        <span class="card-btn outline">View Term Sheet →</span>
+      </a>
+      <a href="#" data-doc="budget" class="action-card drive-link">
+        <div class="card-eyebrow">Detailed Build Budget</div>
+        <div class="card-title">Line-item<br><em>construction</em></div>
+        <p class="card-desc">Hard and soft costs across 21,810 SF, broken out by trade with contingency.</p>
+        <span class="card-btn outline">View Budget →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 03 The Project ===== -->
+  <section class="room-section">
+    <div class="section-head">
+      <h2>The project</h2>
+      <span class="section-num">— 03</span>
+    </div>
+    <div class="actions cols-3">
+      <a href="#" data-doc="plans" class="action-card drive-link">
+        <div class="card-eyebrow">Architectural Plans</div>
+        <div class="card-title">Floor plans &<br><em>renderings</em></div>
+        <p class="card-desc">Site plan, unit-level floor plans, and high-resolution renderings of all six residences.</p>
+        <span class="card-btn outline">View Plans →</span>
+      </a>
+      <a href="#" data-doc="approvals" class="action-card drive-link">
+        <div class="card-eyebrow">Permits & Approvals</div>
+        <div class="card-title">Fully<br><em>entitled</em></div>
+        <p class="card-desc">All city approvals secured. Special counsel sign-off and current building-permit status.</p>
+        <span class="card-btn outline">View Approvals →</span>
       </a>
       <a href="https://theavenuefh.com" target="_blank" rel="noopener" class="action-card">
         <div class="card-eyebrow">Project Website</div>
         <div class="card-title">Tour the<br><em>residences</em></div>
-        <p class="card-desc">Renderings, floor plans, location, and the public-facing project site.</p>
+        <p class="card-desc">Public-facing site with renderings, floor plans, and Fountain Hills location detail.</p>
         <span class="card-btn outline">TheAvenueFH.com ↗</span>
       </a>
     </div>
   </section>
 
+  <!-- ===== 04 The Sponsor ===== -->
   <section class="room-section">
     <div class="section-head">
-      <h2>Supporting documents</h2>
-      <span class="section-num">— 03</span>
+      <h2>The sponsor</h2>
+      <span class="section-num">— 04</span>
     </div>
-    <div class="doc-grid">
-      <a href="#" data-doc="appraisal" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Independent Appraisal</div>
-          <div class="doc-meta">$15.42M · Q1 2026 · Certified</div>
-        </div>
-        <span class="doc-arrow">→</span>
+    <div class="actions">
+      <a href="#" data-doc="track-record" class="action-card featured drive-link">
+        <div class="card-eyebrow">Developer Track Record</div>
+        <div class="card-title">Bondy Construction<br><em>~110 homes built</em></div>
+        <p class="card-desc">Completed projects, references, and project leadership detail. Lukas Bondy provides a personal guarantee on the senior note.</p>
+        <span class="card-btn">View Track Record →</span>
       </a>
-      <a href="#" data-doc="casa" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Casa Lending Term Sheet</div>
-          <div class="doc-meta">Construction loan · $6.75M · 9.75%</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="approvals" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">City Approvals & Permits</div>
-          <div class="doc-meta">Special counsel approval · Permit status</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="budget" class="doc-row drive-link">
-        <div class="doc-tag"><span>XLSX</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Detailed Build Budget</div>
-          <div class="doc-meta">Line-item construction · 21,810 SF</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="plans" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Architectural Plans</div>
-          <div class="doc-meta">Floor plans · Renderings · Site plan</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="track-record" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Developer Track Record</div>
-          <div class="doc-meta">Bondy Construction · ~110 homes built</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
+      <div class="action-card" style="justify-content: center;">
+        <div class="card-eyebrow">Sponsor</div>
+        <div class="card-title" style="margin-bottom: 18px;">Kevin <em>Simpson</em></div>
+        <p class="card-desc" style="margin-bottom: 14px;">AK Capital Investments — investor relations, capital structuring, and reporting on The Avenue.</p>
+        <a href="mailto:Kevin@AKCapital.fund" class="card-btn outline" style="align-self: flex-start;">Kevin@AKCapital.fund</a>
+      </div>
     </div>
   </section>
 
+  <!-- ===== 05 Next Steps ===== -->
+  <section class="contact-section">
+    <div class="contact-grid">
+      <div>
+        <div class="card-eyebrow">Funding deadline · May 15, 2026</div>
+        <h3>Ready to <em>commit?</em></h3>
+        <p>Review the deck and supporting documents above. Funds need to be deployed by May 15 to maintain the construction timeline.</p>
+      </div>
+      <div class="contact-block">
+        <div class="cb-label">Investor Relations</div>
+        <div class="cb-name">Kevin Simpson</div>
+        <div class="cb-sub">AK Capital Investments</div>
+        <a href="mailto:Kevin@AKCapital.fund" class="cb-email">Kevin@AKCapital.fund</a>
+      </div>
+      <div class="contact-block">
+        <div class="cb-label">Developer</div>
+        <div class="cb-name">Lukas Bondy</div>
+        <div class="cb-sub">Bondy Construction & Design</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 06 Submit documents ===== -->
   <section class="room-section">
     <div class="section-head">
       <h2>Submit your documents</h2>
-      <span class="section-num">— 04</span>
+      <span class="section-num">— 06</span>
     </div>
     <div class="upload-section">
       <div class="upload-copy">
@@ -511,27 +598,6 @@
         <button type="submit" class="upload-trigger" id="uploadSubmit" style="display:none; margin-left:8px; background:#2A6068;">Submit</button>
         <div class="upload-fineprint" id="uzFinePrint">Saved directly to Kevin's Google Drive</div>
       </form>
-    </div>
-  </section>
-
-  <section class="contact-section">
-    <div class="contact-grid">
-      <div>
-        <div class="card-eyebrow">Next Steps</div>
-        <h3>Questions?<br>Let's <em>talk.</em></h3>
-        <p>Review the deck and supporting documents. Funds need to be deployed by May 15 to maintain the construction timeline.</p>
-      </div>
-      <div class="contact-block">
-        <div class="cb-label">Investor Relations</div>
-        <div class="cb-name">Kevin Simpson</div>
-        <div class="cb-sub">AK Capital Investments</div>
-        <a href="mailto:Kevin@AKCapital.fund" class="cb-email">Kevin@AKCapital.fund</a>
-      </div>
-      <div class="contact-block">
-        <div class="cb-label">Developer</div>
-        <div class="cb-name">Lukas Bondy</div>
-        <div class="cb-sub">Bondy Construction & Design</div>
-      </div>
     </div>
   </section>
 
