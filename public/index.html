@@ -253,6 +253,13 @@
       <div class="error-msg" id="errorMsg"></div>
       <button type="submit" class="unlock-btn" id="unlockBtn">Unlock Data Room</button>
       <button type="button" class="get-password-btn" id="getPasswordBtn">Need access? Get password →</button>
+      <button type="button" class="forgot-link" id="forgotToggle">Forgot password?</button>
+      <div class="forgot-form" id="forgotForm" hidden>
+        <p class="forgot-help">Enter the email you used to sign the NDA. We'll resend the access password.</p>
+        <input type="email" class="forgot-email" id="forgotEmail" placeholder="you@example.com" autocomplete="email">
+        <button type="button" class="forgot-submit" id="forgotSubmit">Send password</button>
+        <div class="forgot-msg" id="forgotMsg"></div>
+      </div>
     </form>
 
     <div class="nda-card">
@@ -450,6 +457,56 @@
   }
   openBtn.addEventListener('click', openModal);
   document.getElementById('getPasswordBtn').addEventListener('click', openModal);
+
+  // --- Forgot password ---
+  const forgotToggle = document.getElementById('forgotToggle');
+  const forgotForm = document.getElementById('forgotForm');
+  const forgotEmail = document.getElementById('forgotEmail');
+  const forgotSubmit = document.getElementById('forgotSubmit');
+  const forgotMsg = document.getElementById('forgotMsg');
+  forgotToggle.addEventListener('click', () => {
+    const showing = !forgotForm.hidden;
+    forgotForm.hidden = showing;
+    if (!showing) setTimeout(() => forgotEmail.focus(), 50);
+  });
+  forgotSubmit.addEventListener('click', async () => {
+    const email = (forgotEmail.value || '').trim();
+    forgotMsg.textContent = '';
+    forgotMsg.className = 'forgot-msg';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      forgotMsg.textContent = 'Please enter a valid email address.';
+      forgotMsg.classList.add('error');
+      return;
+    }
+    forgotSubmit.disabled = true;
+    forgotSubmit.textContent = 'Sending...';
+    try {
+      const res = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (data.ok && data.registered) {
+        forgotMsg.textContent = 'Password sent — check your email.';
+        forgotMsg.classList.add('success');
+      } else if (data.ok && data.registered === false) {
+        forgotMsg.textContent = 'No NDA on file for that email — opening NDA now.';
+        const prefill = document.getElementById('email');
+        if (prefill) prefill.value = email;
+        setTimeout(openModal, 700);
+      } else {
+        forgotMsg.textContent = data.message || 'Could not send password. Try again.';
+        forgotMsg.classList.add('error');
+      }
+    } catch (err) {
+      forgotMsg.textContent = 'Network error. Please try again.';
+      forgotMsg.classList.add('error');
+    } finally {
+      forgotSubmit.disabled = false;
+      forgotSubmit.textContent = 'Send password';
+    }
+  });
   closeBtn.addEventListener('click', closeModal);
   backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal(); });

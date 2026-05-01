@@ -183,6 +183,74 @@ html, body {
 }
 .get-password-btn:hover { background: var(--gold); color: white; }
 
+.forgot-link {
+  display: block;
+  width: 100%;
+  margin: -20px 0 24px;
+  padding: 4px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.forgot-link:hover { color: var(--gold); }
+
+.forgot-form {
+  margin: -8px 0 24px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.forgot-help {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.4;
+}
+.forgot-email {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: var(--text-light);
+  font-size: 15px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.forgot-email:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.forgot-submit {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--gold);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.forgot-submit:hover:not(:disabled) { background: var(--gold-hover); }
+.forgot-submit:disabled { opacity: 0.6; cursor: wait; }
+.forgot-msg {
+  margin-top: 10px;
+  font-size: 13px;
+  min-height: 1.2em;
+  line-height: 1.4;
+}
+.forgot-msg.error { color: #ff8a8a; }
+.forgot-msg.success { color: #9fd6a8; }
+
 .nda-card {
   background: rgba(0, 0, 0, 0.12);
   border: 1px solid var(--teal-border);
