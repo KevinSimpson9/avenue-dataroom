@@ -1,6 +1,8 @@
 {
   "version": 2,
   "rewrites": [
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/index.html", "destination": "/api/index" },
     { "source": "/room", "destination": "/api/room" },
     { "source": "/room.html", "destination": "/api/room" }
   ],
