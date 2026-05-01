@@ -6,6 +6,7 @@ import { google } from 'googleapis';
 const DOC_MAP = {
   'deck':         'DRIVE_FILE_DECK',
   'appraisal':    'DRIVE_FILE_APPRAISAL',
+  'bov':          'DRIVE_FILE_BOV',
   'casa':         'DRIVE_FILE_CASA',
   'approvals':    'DRIVE_FILE_APPROVALS',
   'budget':       'DRIVE_FILE_BUDGET',
