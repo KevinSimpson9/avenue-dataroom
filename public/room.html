@@ -300,8 +300,103 @@
     margin-top: 2px;
   }
 
+  /* Investor-overview deck banner (institutional CTA) */
+  .deck-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 28px;
+    padding: 22px 26px;
+    background: rgba(0, 0, 0, 0.20);
+    border: 1px solid rgba(212, 162, 74, 0.35);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, background 0.2s;
+    flex-wrap: wrap;
+  }
+  .deck-banner:hover {
+    border-color: #D4A24A;
+    background: rgba(212, 162, 74, 0.06);
+  }
+  .deck-banner-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 6px;
+  }
+  .deck-banner-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #F5EFE6;
+    line-height: 1.25;
+  }
+  .deck-banner-btn {
+    flex-shrink: 0;
+    background: #D4A24A;
+    color: #1A1816;
+    padding: 13px 26px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Two-up principal cards in the team section (compact, institutional) */
+  .principal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .principal-card {
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .principal-role {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #D4A24A;
+    margin-bottom: 8px;
+  }
+  .principal-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #F5EFE6;
+    margin-bottom: 4px;
+  }
+  .principal-org {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 10px;
+  }
+  .principal-bio {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+    margin: 0 0 12px;
+  }
+  .principal-link {
+    font-size: 13px;
+    color: #D4A24A;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(212, 162, 74, 0.4);
+    padding-bottom: 1px;
+  }
+  .principal-link:hover { border-bottom-color: #D4A24A; }
+
   @media (max-width: 880px) {
     .overview-grid { grid-template-columns: 1fr; gap: 24px; }
+    .deck-banner { flex-direction: column; align-items: flex-start; padding: 22px; }
+    .deck-banner-btn { align-self: stretch; text-align: center; }
+    .principal-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -346,99 +441,45 @@
     </div>
   </div>
 
+  <!-- ===== 01 Investor Overview ===== -->
   <section class="room-section">
     <div class="section-head">
-      <h2>Project overview</h2>
+      <h2>Investor overview</h2>
       <span class="section-num">— 01</span>
     </div>
-    <div class="overview-grid">
-      <div class="overview-narrative">
-        <p>
-          <em>The Avenue</em> is a six-unit luxury townhome development on Avenue of the Fountains in
-          downtown Fountain Hills — a supply-constrained pocket of the Phoenix metro just east of
-          Scottsdale. The project is fully entitled, permitted, and shovel-ready, with one unit
-          already reserved at <strong>$2.412M</strong>.
-        </p>
-        <p>
-          Senior construction financing of <strong>$6.75M</strong> is committed through Casa Lending.
-          The current investor raise of <strong>$350K</strong> closes the gap to break ground —
-          secured by a personal guarantee, with a <strong>24× coverage ratio</strong> against a
-          <strong>$15.42M</strong> certified appraisal.
-        </p>
-        <a href="#" data-doc="deck" class="overview-cta drive-link">View full deck →</a>
+    <div class="overview-narrative" style="max-width: 820px;">
+      <p>
+        <strong>$350,000 capital raise at 20% APR</strong>, secured by a personal guarantee from
+        the developer and a 24× coverage ratio against a $15.42M certified appraisal.
+      </p>
+      <p>
+        Proceeds close the equity gap on a fully entitled, six-unit luxury townhome development
+        on Avenue of the Fountains in downtown Fountain Hills, Arizona. Senior construction
+        financing of $6.75M is committed; funding deadline is May 15, 2026.
+      </p>
+    </div>
+
+    <a href="#" data-doc="deck" class="deck-banner drive-link">
+      <div>
+        <div class="deck-banner-eyebrow">Investor Overview Deck · 14 slides · April 2026</div>
+        <div class="deck-banner-title">Capital stack, returns, timeline &amp; risk mitigation</div>
       </div>
-      <ul class="highlight-list">
-        <li>
-          <span class="hl-icon">✓</span>
-          <span class="hl-text">
-            <strong>Shovel-ready, permitted</strong>
-            <span class="hl-meta">All city approvals secured · 21,810 SF total</span>
-          </span>
-        </li>
-        <li>
-          <span class="hl-icon">✓</span>
-          <span class="hl-text">
-            <strong>Senior debt locked</strong>
-            <span class="hl-meta">$6.75M Casa Lending construction loan @ 9.75%</span>
-          </span>
-        </li>
-        <li>
-          <span class="hl-icon">✓</span>
-          <span class="hl-text">
-            <strong>Pre-sales underway</strong>
-            <span class="hl-meta">Unit 1 reserved at $2.412M</span>
-          </span>
-        </li>
-        <li>
-          <span class="hl-icon">✓</span>
-          <span class="hl-text">
-            <strong>Proven sponsor</strong>
-            <span class="hl-meta">Bondy Construction · ~110 homes built</span>
-          </span>
-        </li>
-        <li>
-          <span class="hl-icon">✓</span>
-          <span class="hl-text">
-            <strong>20% APR · personal guarantee</strong>
-            <span class="hl-meta">Funding deadline May 15, 2026</span>
-          </span>
-        </li>
-      </ul>
-    </div>
+      <span class="deck-banner-btn">View deck →</span>
+    </a>
   </section>
 
+  <!-- ===== 02 Financial Documentation ===== -->
   <section class="room-section">
     <div class="section-head">
-      <h2>Start here</h2>
+      <h2>Financial documentation</h2>
       <span class="section-num">— 02</span>
-    </div>
-    <div class="actions">
-      <a href="#" data-doc="deck" class="action-card featured drive-link">
-        <div class="card-eyebrow">Investment Deck</div>
-        <div class="card-title">Investor <em>Overview</em></div>
-        <p class="card-desc">Full deal summary, capital stack, distribution waterfall, project timeline, team bios, and risk mitigation. 14 slides. Updated April 2026.</p>
-        <span class="card-btn">View Deck →</span>
-      </a>
-      <a href="https://theavenuefh.com" target="_blank" rel="noopener" class="action-card">
-        <div class="card-eyebrow">Project Website</div>
-        <div class="card-title">Tour the<br><em>residences</em></div>
-        <p class="card-desc">Renderings, floor plans, location, and the public-facing project site.</p>
-        <span class="card-btn outline">TheAvenueFH.com ↗</span>
-      </a>
-    </div>
-  </section>
-
-  <section class="room-section">
-    <div class="section-head">
-      <h2>Supporting documents</h2>
-      <span class="section-num">— 03</span>
     </div>
     <div class="doc-grid">
       <a href="#" data-doc="appraisal" class="doc-row drive-link">
         <div class="doc-tag"><span>PDF</span></div>
         <div class="doc-info">
           <div class="doc-name">Independent Appraisal</div>
-          <div class="doc-meta">$15.42M · Q1 2026 · Certified</div>
+          <div class="doc-meta">$15.42M valuation · Q1 2026 · Certified appraiser</div>
         </div>
         <span class="doc-arrow">→</span>
       </a>
@@ -446,15 +487,7 @@
         <div class="doc-tag"><span>PDF</span></div>
         <div class="doc-info">
           <div class="doc-name">Casa Lending Term Sheet</div>
-          <div class="doc-meta">Construction loan · $6.75M · 9.75%</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="approvals" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">City Approvals & Permits</div>
-          <div class="doc-meta">Special counsel approval · Permit status</div>
+          <div class="doc-meta">Senior construction loan · $6.75M · 9.75%</div>
         </div>
         <span class="doc-arrow">→</span>
       </a>
@@ -462,33 +495,85 @@
         <div class="doc-tag"><span>XLSX</span></div>
         <div class="doc-info">
           <div class="doc-name">Detailed Build Budget</div>
-          <div class="doc-meta">Line-item construction · 21,810 SF</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="plans" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Architectural Plans</div>
-          <div class="doc-meta">Floor plans · Renderings · Site plan</div>
-        </div>
-        <span class="doc-arrow">→</span>
-      </a>
-      <a href="#" data-doc="track-record" class="doc-row drive-link">
-        <div class="doc-tag"><span>PDF</span></div>
-        <div class="doc-info">
-          <div class="doc-name">Developer Track Record</div>
-          <div class="doc-meta">Bondy Construction · ~110 homes built</div>
+          <div class="doc-meta">Line-item construction · 21,810 SF · Hard &amp; soft costs</div>
         </div>
         <span class="doc-arrow">→</span>
       </a>
     </div>
   </section>
 
+  <!-- ===== 03 Project & Permits ===== -->
+  <section class="room-section">
+    <div class="section-head">
+      <h2>Project &amp; permits</h2>
+      <span class="section-num">— 03</span>
+    </div>
+    <div class="doc-grid">
+      <a href="#" data-doc="plans" class="doc-row drive-link">
+        <div class="doc-tag"><span>PDF</span></div>
+        <div class="doc-info">
+          <div class="doc-name">Architectural Plans</div>
+          <div class="doc-meta">Site plan · Unit floor plans · Renderings</div>
+        </div>
+        <span class="doc-arrow">→</span>
+      </a>
+      <a href="#" data-doc="approvals" class="doc-row drive-link">
+        <div class="doc-tag"><span>PDF</span></div>
+        <div class="doc-info">
+          <div class="doc-name">City Approvals &amp; Permits</div>
+          <div class="doc-meta">Special counsel approval · Building permit status</div>
+        </div>
+        <span class="doc-arrow">→</span>
+      </a>
+      <a href="https://theavenuefh.com" target="_blank" rel="noopener" class="doc-row">
+        <div class="doc-tag"><span>WEB</span></div>
+        <div class="doc-info">
+          <div class="doc-name">Project Website</div>
+          <div class="doc-meta">TheAvenueFH.com · Public-facing site</div>
+        </div>
+        <span class="doc-arrow">↗</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== 04 Sponsor & Track Record ===== -->
+  <section class="room-section">
+    <div class="section-head">
+      <h2>Sponsor &amp; track record</h2>
+      <span class="section-num">— 04</span>
+    </div>
+    <div class="doc-grid">
+      <a href="#" data-doc="track-record" class="doc-row drive-link">
+        <div class="doc-tag"><span>PDF</span></div>
+        <div class="doc-info">
+          <div class="doc-name">Developer Track Record</div>
+          <div class="doc-meta">Bondy Construction · ~110 homes built · References</div>
+        </div>
+        <span class="doc-arrow">→</span>
+      </a>
+    </div>
+    <div class="principal-grid">
+      <div class="principal-card">
+        <div class="principal-role">Co-Developer · Construction</div>
+        <div class="principal-name">Lukas Bondy</div>
+        <div class="principal-org">Bondy Construction &amp; Design</div>
+        <p class="principal-bio">Construction lead on The Avenue. ~110 homes built across Arizona. Personal guarantor on the senior note.</p>
+      </div>
+      <div class="principal-card">
+        <div class="principal-role">Co-Developer · Investor Relations</div>
+        <div class="principal-name">Kevin Simpson</div>
+        <div class="principal-org">AK Capital Investments</div>
+        <p class="principal-bio">Capital structuring, investor relations, and reporting on The Avenue.</p>
+        <a href="mailto:Kevin@AKCapital.fund" class="principal-link">Kevin@AKCapital.fund</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 05 Submit Documents ===== -->
   <section class="room-section">
     <div class="section-head">
       <h2>Submit your documents</h2>
-      <span class="section-num">— 04</span>
+      <span class="section-num">— 05</span>
     </div>
     <div class="upload-section">
       <div class="upload-copy">
