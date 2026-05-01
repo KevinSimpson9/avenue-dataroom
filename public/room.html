@@ -98,6 +98,57 @@
     color: rgba(255,255,255,0.6);
     font-size: 14px;
   }
+
+  /* Document viewer (iframe embed) */
+  .viewer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 22, 26, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    z-index: 1100;
+    flex-direction: column;
+  }
+  .viewer-backdrop.open { display: flex; }
+  .viewer-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px;
+    background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.92);
+    flex-shrink: 0;
+  }
+  .viewer-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .viewer-actions { display: flex; gap: 10px; align-items: center; }
+  .viewer-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.92);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: inherit;
+  }
+  .viewer-btn:hover { background: rgba(255,255,255,0.14); }
+  .viewer-btn.close { background: transparent; }
+  .viewer-frame-wrap {
+    flex: 1;
+    background: #1a1816;
+    overflow: hidden;
+  }
+  .viewer-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
 </style>
 </head>
 <body>
@@ -298,7 +349,7 @@
     <div class="folder-modal-header">
       <div>
         <div class="folder-modal-title" id="folderModalTitle">Documents</div>
-        <div class="folder-modal-sub">Click any file to open in a new tab</div>
+        <div class="folder-modal-sub">Click any file to view</div>
       </div>
       <button type="button" class="folder-close" id="folderCloseBtn" aria-label="Close">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -308,10 +359,40 @@
   </div>
 </div>
 
+<!-- Inline document viewer (Drive iframe embed) -->
+<div class="viewer-backdrop" id="viewerBackdrop" role="dialog" aria-modal="true">
+  <div class="viewer-bar">
+    <div class="viewer-title" id="viewerTitle">Document</div>
+    <div class="viewer-actions">
+      <a class="viewer-btn" id="viewerOpenNew" href="#" target="_blank" rel="noopener" title="Open in new tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open in new tab
+      </a>
+      <button type="button" class="viewer-btn close" id="viewerCloseBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Close
+      </button>
+    </div>
+  </div>
+  <div class="viewer-frame-wrap">
+    <iframe class="viewer-frame" id="viewerFrame" src="about:blank" allow="autoplay" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+  </div>
+</div>
+
 <script>
   const folderBackdrop = document.getElementById('folderBackdrop');
   const folderList = document.getElementById('folderList');
   const folderTitle = document.getElementById('folderModalTitle');
+  const viewerBackdrop = document.getElementById('viewerBackdrop');
+  const viewerFrame = document.getElementById('viewerFrame');
+  const viewerTitle = document.getElementById('viewerTitle');
+  const viewerOpenNew = document.getElementById('viewerOpenNew');
+
+  function toPreviewUrl(url) {
+    if (!url) return url;
+    // Convert Drive /view URLs to /preview for iframe embedding
+    return url.replace(/\/file\/d\/([^/]+)\/view[^?]*/, '/file/d/$1/preview');
+  }
 
   function openFolderModal(title) {
     folderTitle.textContent = title || 'Documents';
@@ -323,6 +404,20 @@
     folderBackdrop.classList.remove('open');
     document.body.style.overflow = '';
   }
+  function openViewer(title, url) {
+    viewerTitle.textContent = title || 'Document';
+    viewerFrame.src = toPreviewUrl(url);
+    viewerOpenNew.href = url;
+    viewerBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeViewer() {
+    viewerBackdrop.classList.remove('open');
+    viewerFrame.src = 'about:blank';
+    if (!folderBackdrop.classList.contains('open')) {
+      document.body.style.overflow = '';
+    }
+  }
   function fileExt(name) {
     const m = (name || '').match(/\.([^.]+)$/);
     return m ? m[1].toUpperCase() : '';
@@ -332,8 +427,8 @@
       folderList.innerHTML = '<div class="folder-empty">No files in this folder yet.</div>';
       return;
     }
-    folderList.innerHTML = items.map(item => `
-      <a class="folder-item" href="${item.url}" target="_blank" rel="noopener">
+    folderList.innerHTML = items.map((item, i) => `
+      <a class="folder-item" href="#" data-idx="${i}" data-url="${item.url}" data-name="${item.name.replace(/"/g, '&quot;')}">
         <div class="ficon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
@@ -341,11 +436,22 @@
         <div class="fext">${fileExt(item.name)}</div>
       </a>
     `).join('');
+    folderList.querySelectorAll('.folder-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        openViewer(el.dataset.name, el.dataset.url);
+      });
+    });
   }
 
   document.getElementById('folderCloseBtn').addEventListener('click', closeFolderModal);
   folderBackdrop.addEventListener('click', e => { if (e.target === folderBackdrop) closeFolderModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && folderBackdrop.classList.contains('open')) closeFolderModal(); });
+  document.getElementById('viewerCloseBtn').addEventListener('click', closeViewer);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (viewerBackdrop.classList.contains('open')) closeViewer();
+    else if (folderBackdrop.classList.contains('open')) closeFolderModal();
+  });
 
   // Resolve Drive links via API endpoint
   document.querySelectorAll('.drive-link').forEach(link => {
@@ -365,7 +471,7 @@
           openFolderModal(tileLabel);
           renderFolderItems(data.items);
         } else if (data.url) {
-          window.open(data.url, '_blank', 'noopener');
+          openViewer(tileLabel, data.url);
         }
       } catch (err) {
         alert('Unable to open document. Please try again or contact Kevin@AKCapital.fund');
