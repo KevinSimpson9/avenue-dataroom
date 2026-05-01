@@ -19,7 +19,22 @@ function fileViewerUrl(id) {
   return `https://drive.google.com/file/d/${id}/view`;
 }
 
-async function listFolderItems(folderId) {
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+
+async function listChildren(drive, folderId) {
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: 'files(id, name, mimeType, webViewLink)',
+    orderBy: 'name',
+    pageSize: 500,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    corpora: 'allDrives'
+  });
+  return response.data.files || [];
+}
+
+async function listFolderItems(rootFolderId) {
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!serviceAccountKey) throw new Error('Service account not configured');
 
@@ -30,21 +45,29 @@ async function listFolderItems(folderId) {
   });
   const drive = google.drive({ version: 'v3', auth });
 
-  const response = await drive.files.list({
-    q: `'${folderId}' in parents and trashed = false`,
-    fields: 'files(id, name, mimeType, webViewLink)',
-    orderBy: 'name',
-    pageSize: 200,
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-    corpora: 'allDrives'
-  });
-
-  return (response.data.files || []).map(f => ({
-    name: f.name,
-    mimeType: f.mimeType,
-    url: f.webViewLink || fileViewerUrl(f.id)
-  }));
+  // BFS through sub-folders, flattening files. Cap at 200 files / depth 5 for safety.
+  const results = [];
+  const queue = [{ id: rootFolderId, depth: 0 }];
+  const visited = new Set();
+  while (queue.length && results.length < 200) {
+    const { id, depth } = queue.shift();
+    if (visited.has(id) || depth > 5) continue;
+    visited.add(id);
+    const children = await listChildren(drive, id);
+    for (const child of children) {
+      if (child.mimeType === FOLDER_MIME) {
+        queue.push({ id: child.id, depth: depth + 1 });
+      } else {
+        results.push({
+          name: child.name,
+          mimeType: child.mimeType,
+          url: child.webViewLink || fileViewerUrl(child.id)
+        });
+      }
+    }
+  }
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
 }
 
 export default async function handler(req, res) {
