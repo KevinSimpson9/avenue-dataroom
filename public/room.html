@@ -99,6 +99,64 @@
     font-size: 14px;
   }
 
+  /* Coming-soon notice modal */
+  .notice-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(8, 22, 26, 0.78);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    padding: 24px;
+  }
+  .notice-backdrop.open { display: flex; }
+  .notice-card {
+    width: 100%;
+    max-width: 420px;
+    background: linear-gradient(160deg, #1F4A52 0%, #2A6068 100%);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 36px 32px 28px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .notice-icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(212,162,74,0.16);
+    color: #D4A24A;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+  }
+  .notice-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: #F5EFE6;
+    margin-bottom: 10px;
+  }
+  .notice-body {
+    color: rgba(255,255,255,0.72);
+    font-size: 14px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+  }
+  .notice-btn {
+    background: #D4A24A;
+    color: #1A1816;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .notice-btn:hover { background: #BC8E3C; }
+
   /* Document viewer (iframe embed) */
   .viewer-backdrop {
     position: fixed; inset: 0;
@@ -351,6 +409,18 @@
   </div>
 </div>
 
+<!-- Coming-soon notice modal -->
+<div class="notice-backdrop" id="noticeBackdrop" role="dialog" aria-modal="true">
+  <div class="notice-card">
+    <div class="notice-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div class="notice-title" id="noticeTitle">Will update soon</div>
+    <div class="notice-body" id="noticeBody">This document is being finalized and will be added shortly. Check back soon, or reach out to Kevin@AKCapital.fund for an early look.</div>
+    <button type="button" class="notice-btn" id="noticeCloseBtn">Got it</button>
+  </div>
+</div>
+
 <!-- Inline document viewer (Drive iframe embed) -->
 <div class="viewer-backdrop" id="viewerBackdrop" role="dialog" aria-modal="true">
   <div class="viewer-bar">
@@ -379,6 +449,24 @@
   const viewerFrame = document.getElementById('viewerFrame');
   const viewerTitle = document.getElementById('viewerTitle');
   const viewerOpenNew = document.getElementById('viewerOpenNew');
+  const noticeBackdrop = document.getElementById('noticeBackdrop');
+  const noticeTitle = document.getElementById('noticeTitle');
+  const noticeBody = document.getElementById('noticeBody');
+
+  function openNotice(title, body) {
+    if (title) noticeTitle.textContent = title;
+    if (body) noticeBody.textContent = body;
+    noticeBackdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeNotice() {
+    noticeBackdrop.classList.remove('open');
+    if (!viewerBackdrop.classList.contains('open') && !folderBackdrop.classList.contains('open')) {
+      document.body.style.overflow = '';
+    }
+  }
+  document.getElementById('noticeCloseBtn').addEventListener('click', closeNotice);
+  noticeBackdrop.addEventListener('click', e => { if (e.target === noticeBackdrop) closeNotice(); });
 
   function toPreviewUrl(url) {
     if (!url) return url;
@@ -456,7 +544,7 @@
         const res = await fetch(`/api/file?doc=${encodeURIComponent(docKey)}`);
         const data = await res.json();
         if (!data.ok) {
-          alert(data.message || 'Document not yet available. Contact Kevin for access.');
+          openNotice(tileLabel, data.message || 'This document is being finalized and will be added shortly.');
           return;
         }
         if (data.type === 'folder') {
