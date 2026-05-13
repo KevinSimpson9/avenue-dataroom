@@ -93,6 +93,7 @@ export default async function handler(req, res) {
       if (route === 'add-investor') return await postAddInvestor(req, res);
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
       if (route === 'resend-link') return await postResendLink(req, res);
+      if (route === 'request-lukas-signature') return await postRequestLukasSignature(req, res);
     }
     return res.status(404).json({ ok: false, message: 'Not found', route });
   } catch (err) {
@@ -710,6 +711,39 @@ async function postResendLink(req, res) {
     return res.status(200).json({ ok: true });
   }
   return res.status(400).json({ ok: false, message: 'Unknown kind.' });
+}
+
+// ---------- Investor pings Lukas for his signature ----------
+
+async function postRequestLukasSignature(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+
+  let registry, fileId, drive;
+  try { ({ registry, fileId, drive } = await loadRegistry()); }
+  catch (err) {
+    console.error('request-lukas-signature: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, session.email);
+  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
+  if (entry.lukasSignedAt) return res.status(409).json({ ok: false, message: 'Lukas has already signed your note.' });
+
+  const last = entry.lukasReminderSentAt ? Date.parse(entry.lukasReminderSentAt) : 0;
+  const COOLDOWN_MS = 60 * 60 * 1000;
+  if (Number.isFinite(last) && Date.now() - last < COOLDOWN_MS) {
+    const minsLeft = Math.ceil((COOLDOWN_MS - (Date.now() - last)) / 60000);
+    return res.status(429).json({ ok: false, message: `Reminder already sent. You can ping Lukas again in ${minsLeft} min.` });
+  }
+
+  const result = await sendLukasNewNoteNotice({
+    to: LUKAS_EMAIL, investorName: entry.name, principal: entry.principal
+  });
+  if (!result.sent) return res.status(500).json({ ok: false, message: 'Email failed: ' + (result.reason || 'unknown') });
+
+  updateEntry(registry, entry.email, { lukasReminderSentAt: new Date().toISOString() });
+  await saveRegistry(drive, fileId, registry);
+  return res.status(200).json({ ok: true });
 }
 
 // ---------- Expired-link page ----------
