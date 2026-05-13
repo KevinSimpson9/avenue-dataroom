@@ -326,13 +326,9 @@
       html += `
         <div class="banner wait">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <div style="flex:1">
+          <div>
             <div style="color:white;font-weight:600;margin-bottom:2px">Awaiting Lukas's signature</div>
             <div style="color:var(--muted);font-size:13px">We'll email you the moment Lukas signs and your note is ready to counter-sign.</div>
-            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <button id="pingLukasBtn" type="button" style="padding:9px 16px;background:var(--gold);color:var(--ink);border:none;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Request Lukas's signature</button>
-              <span id="pingLukasMsg" style="font-size:13px;color:var(--muted)"></span>
-            </div>
           </div>
         </div>
       `;
@@ -380,41 +376,8 @@
 
     // Wire up sign button
     if (readyToSign) wireSign(inv);
-    if (awaitingLukas) wirePingLukas();
     wireUpload(inv);
     renderDocList(files);
-  }
-
-  function wirePingLukas() {
-    const btn = document.getElementById('pingLukasBtn');
-    const msg = document.getElementById('pingLukasMsg');
-    if (!btn) return;
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.textContent = 'Sending…';
-      msg.style.color = 'var(--muted)';
-      msg.textContent = '';
-      try {
-        const res = await fetch('/api/portal/request-lukas-signature', { method:'POST' });
-        const data = await res.json().catch(() => ({}));
-        if (data.ok) {
-          btn.textContent = '✓ Reminder sent';
-          msg.style.color = '#9FD6A8';
-          msg.textContent = 'Lukas has been emailed.';
-        } else {
-          btn.textContent = original;
-          btn.disabled = false;
-          msg.style.color = '#ff9a9a';
-          msg.textContent = data.message || 'Could not send reminder.';
-        }
-      } catch (err) {
-        btn.textContent = original;
-        btn.disabled = false;
-        msg.style.color = '#ff9a9a';
-        msg.textContent = 'Network error. Please try again.';
-      }
-    });
   }
 
   function firstName(n){ return (n||'').split(' ')[0]; }

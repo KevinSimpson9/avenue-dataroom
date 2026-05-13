@@ -265,7 +265,7 @@
 
     // Row action handlers
     document.querySelectorAll('[data-act]').forEach(el => {
-      el.addEventListener('click', () => rowAction(el.dataset.act, el.dataset.email));
+      el.addEventListener('click', () => rowAction(el.dataset.act, el.dataset.email, el));
     });
   }
 
@@ -291,6 +291,15 @@
         <div class="actions-cell">
           ${inv.deletedAt ? '' : `<button class="row-btn primary" data-act="open" data-email="${escape(inv.email)}">Open folder →</button>`}
           ${inv.state === 'awaiting-lukas' && me && me.email && me.email.toLowerCase() === LUKAS_EMAIL ? `<button class="row-btn" data-act="sign-as-lukas" data-email="${escape(inv.email)}">Sign now</button>` : ''}
+          ${inv.deletedAt || inv.state === 'fully-executed' ? '' : `
+            <span class="sig-request" style="display:inline-flex;gap:6px;align-items:center">
+              <select class="row-btn" data-sig-select data-email="${escape(inv.email)}" style="padding:6px 8px">
+                <option value="lukas" ${inv.lukasSignedAt ? 'disabled' : ''}>Lukas${inv.lukasSignedAt ? ' (signed)' : ''}</option>
+                <option value="investor" ${!inv.lukasSignedAt ? 'disabled' : ''} ${inv.lukasSignedAt ? 'selected' : ''}>Investor${!inv.lukasSignedAt ? ' (not ready)' : ''}</option>
+              </select>
+              <button class="row-btn" data-act="request-signature" data-email="${escape(inv.email)}">Request signature</button>
+            </span>
+          `}
           ${inv.deletedAt ? '' : `<button class="row-btn" data-act="resend" data-email="${escape(inv.email)}">Resend link</button>`}
           ${inv.deletedAt ? '' : `<button class="row-btn danger" data-act="remove" data-email="${escape(inv.email)}">Remove</button>`}
         </div>
@@ -298,12 +307,33 @@
     </tr>`;
   }
 
-  function rowAction(act, email) {
+  function rowAction(act, email, btn) {
     if (act === 'open') { window.location.search = '?email=' + encodeURIComponent(email); return; }
     if (act === 'sign-as-lukas') { window.location.href = '/portal/admin/sign?email=' + encodeURIComponent(email); return; }
     if (act === 'resend') return resendLink(email);
     if (act === 'remove') return removeInvestor(email);
+    if (act === 'request-signature') return requestSignature(email, btn);
   }
+
+  async function requestSignature(email, btn) {
+    const sel = document.querySelector(`select[data-sig-select][data-email="${cssEscape(email)}"]`);
+    const who = sel ? sel.value : 'lukas';
+    const label = who === 'lukas' ? 'Lukas' : 'the investor';
+    if (!confirm(`Email ${label} to request their signature on ${email}'s note?`)) return;
+    const kind = who === 'lukas' ? 'lukas-signature' : 'investor-signature';
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      const res = await fetch('/api/portal/resend-link', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email, kind })
+      });
+      const data = await res.json();
+      alert(data.ok ? `Signature request sent to ${label}.` : ('Failed: ' + (data.message||'')));
+    } catch (err) { alert('Network error.'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Request signature'; } }
+  }
+
+  function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
   async function addInvestor(e) {
     e.preventDefault();
