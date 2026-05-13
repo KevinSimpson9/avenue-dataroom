@@ -48,13 +48,14 @@ import {
   clearSessionCookie,
   verifyPortalSession
 } from '../_portal-auth.js';
-import { signAsLukas, signAsInvestor } from '../_promissory-sign.js';
+import { signAsLukas, signAsInvestor, applyFieldsForSigner } from '../_promissory-sign.js';
 import {
   sendSetupLink,
   sendLukasNewNoteNotice,
   sendInvestorReadyToSign,
   sendExecutedCopy,
-  sendKevinInvestorSignedNotice
+  sendKevinInvestorSignedNotice,
+  sendSignerInvite
 } from '../_portal-email.js';
 
 // We handle body parsing ourselves so that multipart endpoints (upload,
@@ -82,6 +83,10 @@ export default async function handler(req, res) {
       if (route === 'folder') return getFolder(req, res);
       if (route === 'logout') return doLogout(req, res);
       if (route === 'enter-data-room') return enterDataRoom(req, res);
+      if (route === 'signing-plan') return await getSigningPlan(req, res);
+      if (route === 'signer') return renderSignerPage(req, res);
+      if (route === 'signer-task') return await getSignerTask(req, res);
+      if (route === 'blank-pdf') return await getBlankPdf(req, res);
     }
     if (req.method === 'POST') {
       if (route === 'login') return await postLogin(req, res);
@@ -93,6 +98,9 @@ export default async function handler(req, res) {
       if (route === 'add-investor') return await postAddInvestor(req, res);
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
       if (route === 'resend-link') return await postResendLink(req, res);
+      if (route === 'save-signing-plan') return await postSaveSigningPlan(req, res);
+      if (route === 'start-signing') return await postStartSigning(req, res);
+      if (route === 'signer-sign') return await postSignerSign(req, res);
     }
     return res.status(404).json({ ok: false, message: 'Not found', route });
   } catch (err) {
@@ -161,6 +169,11 @@ function renderAdminDashboard(req, res) {
   if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
   return servePublicFile(res, 'portal-admin.html');
+}
+
+function renderSignerPage(req, res) {
+  // Public route — no session required; token validates downstream.
+  return servePublicFile(res, 'portal-signer.html');
 }
 
 function renderAdminSign(req, res) {
@@ -710,6 +723,342 @@ async function postResendLink(req, res) {
     return res.status(200).json({ ok: true });
   }
   return res.status(400).json({ ok: false, message: 'Unknown kind.' });
+}
+
+// ---------- Multi-signer signing plan ----------
+//
+// A signing plan lets the admin assign multiple signers to specific fields on
+// the investor's blank PDF, with a sequential signing order. Stored on the
+// investor entry as `signingPlan: { signers: [...], fields: [...] }`.
+//
+// signers:  [{ id, name, email, order, accessMethod: 'magic-link'|'account',
+//              magicNonce?, signedAt?, role?: 'investor'|'admin'|'extra' }]
+// fields:   [{ id, signerId, page, x, y, type, label? }]
+//
+// Signing flow:
+//   1. Admin saves plan + clicks "Start signing" → first signer (order 0)
+//      receives email with magic link.
+//   2. Signer opens link, types their signature, submits.
+//   3. Server overlays their fields onto the latest PDF, writes the partially
+//      signed PDF back to the investor folder, advances order, emails next
+//      signer. When all signers done, final PDF is saved + investor + admin
+//      notified.
+
+async function getSigningPlan(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const email = normalizeEmail((new URL(req.url, 'http://x').searchParams.get('email')) || '');
+  let registry;
+  try { ({ registry } = await loadRegistry()); }
+  catch (err) {
+    console.error('signing-plan: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, email);
+  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
+  return res.status(200).json({
+    ok: true,
+    investor: { name: entry.name, email: entry.email, blankPdfId: entry.blankPdfId || null },
+    plan: entry.signingPlan || { signers: [], fields: [] }
+  });
+}
+
+// Stream the investor's blank PDF for pdf.js rendering in admin / signer pages.
+// Admins can fetch any investor's blank; investors can fetch their own;
+// magic-link signers can fetch with a valid signer token.
+async function getBlankPdf(req, res) {
+  const u = new URL(req.url, 'http://x');
+  const email = normalizeEmail(u.searchParams.get('email') || '');
+  const token = u.searchParams.get('token') || '';
+  const session = verifyPortalSession(req);
+
+  let registry, drive;
+  try { ({ registry, drive } = await loadRegistry()); }
+  catch (err) {
+    console.error('blank-pdf: registry load failed', err);
+    return res.status(500).end();
+  }
+
+  let entry = null;
+  if (token) {
+    const decoded = verifyToken(token);
+    if (!decoded || decoded.purpose !== 'sign-magic') return res.status(403).end();
+    entry = findByEmail(registry, decoded.email);
+    if (!entry || !entry.signingPlan) return res.status(404).end();
+    const signer = (entry.signingPlan.signers || []).find(s => s.id === decoded.nonce.split(':')[0]);
+    if (!signer || signer.magicNonce !== decoded.nonce) return res.status(403).end();
+  } else {
+    if (!session) return res.status(401).end();
+    const target = (session.role === 'admin' && email) ? email : session.email;
+    entry = findByEmail(registry, target);
+    if (!entry || entry.role !== 'investor') return res.status(404).end();
+  }
+  if (!entry.blankPdfId) return res.status(404).end();
+
+  // Always serve the latest in-progress PDF if one exists, so admins see field
+  // placement against the current state and signers see prior signatures.
+  const pdfId = entry.signingProgressPdfId || entry.lukasSignedPdfId || entry.blankPdfId;
+  try {
+    const bytes = await downloadFile(drive, pdfId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.status(200).end(Buffer.from(bytes));
+  } catch (err) {
+    console.error('blank-pdf: download failed', err);
+    return res.status(500).end();
+  }
+}
+
+async function postSaveSigningPlan(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const email = normalizeEmail(body?.email);
+  const signersIn = Array.isArray(body?.signers) ? body.signers : [];
+  const fieldsIn = Array.isArray(body?.fields) ? body.fields : [];
+  if (!email) return res.status(400).json({ ok: false, message: 'Investor email required.' });
+  if (signersIn.length === 0) return res.status(400).json({ ok: false, message: 'At least one signer is required.' });
+
+  let registry, fileId, drive;
+  try { ({ registry, fileId, drive } = await loadRegistry()); }
+  catch (err) {
+    console.error('save-signing-plan: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, email);
+  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
+  if (entry.signingPlan && (entry.signingPlan.signers || []).some(s => s.signedAt)) {
+    return res.status(409).json({ ok: false, message: 'Signing has already started; plan is locked.' });
+  }
+
+  // Sanitize signers — preserve existing signer ids when present so field ids
+  // assigned to them stay valid.
+  const existing = entry.signingPlan?.signers || [];
+  const signers = signersIn.map((s, i) => {
+    const prev = existing.find(p => p.id === s.id);
+    const access = s.accessMethod === 'account' ? 'account' : 'magic-link';
+    return {
+      id: String(s.id || ('s_' + crypto.randomBytes(4).toString('hex'))),
+      name: String(s.name || '').trim(),
+      email: normalizeEmail(s.email),
+      order: Number.isFinite(parseInt(s.order, 10)) ? parseInt(s.order, 10) : i,
+      accessMethod: access,
+      role: s.role || 'extra',
+      magicNonce: prev?.magicNonce || null,
+      signedAt: prev?.signedAt || null
+    };
+  }).filter(s => s.name && s.email);
+
+  if (signers.length === 0) return res.status(400).json({ ok: false, message: 'Each signer needs a name and email.' });
+
+  const validSignerIds = new Set(signers.map(s => s.id));
+  const fields = fieldsIn
+    .filter(f => validSignerIds.has(String(f.signerId)))
+    .map(f => ({
+      id: String(f.id || ('f_' + crypto.randomBytes(4).toString('hex'))),
+      signerId: String(f.signerId),
+      page: parseInt(f.page, 10) || 0,
+      x: Number(f.x) || 0,
+      y: Number(f.y) || 0,
+      type: ['signature', 'date', 'name', 'title', 'initials'].includes(f.type) ? f.type : 'signature',
+      label: String(f.label || '').slice(0, 60)
+    }));
+
+  updateEntry(registry, email, { signingPlan: { signers, fields } });
+  await saveRegistry(drive, fileId, registry);
+  return res.status(200).json({ ok: true });
+}
+
+// Admin trigger: emails the next pending signer their magic link.
+// Idempotent — if the queue is empty, returns ok with a note.
+async function postStartSigning(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const email = normalizeEmail(body?.email);
+  if (!email) return res.status(400).json({ ok: false, message: 'Investor email required.' });
+
+  let registry, fileId, drive;
+  try { ({ registry, fileId, drive } = await loadRegistry()); }
+  catch (err) {
+    console.error('start-signing: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, email);
+  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
+  if (!entry.signingPlan) return res.status(400).json({ ok: false, message: 'No signing plan saved yet.' });
+
+  const result = await inviteNextSigner({ entry, registry, fileId, drive });
+  if (!result.ok) return res.status(400).json(result);
+  return res.status(200).json(result);
+}
+
+// Find the next signer in `order` who hasn't signed yet, mint their magic
+// nonce, persist it, and email the invite. Returns { ok, done?, signer? }.
+async function inviteNextSigner({ entry, registry, fileId, drive }) {
+  const plan = entry.signingPlan;
+  const sorted = [...(plan.signers || [])].sort((a, b) => a.order - b.order);
+  const next = sorted.find(s => !s.signedAt);
+  if (!next) {
+    return { ok: true, done: true, message: 'All signers have completed.' };
+  }
+  // Issue a fresh magic nonce so a previous link is invalidated.
+  next.magicNonce = `${next.id}:${crypto.randomBytes(8).toString('hex')}`;
+  // Persist the updated nonce.
+  const idx = plan.signers.findIndex(s => s.id === next.id);
+  plan.signers[idx] = next;
+  updateEntry(registry, entry.email, { signingPlan: plan });
+  await saveRegistry(drive, fileId, registry);
+
+  const token = issueToken({ email: entry.email, purpose: 'sign-magic', nonce: next.magicNonce });
+  const link = `${process.env.PORTAL_BASE_URL || 'https://dataroom.theavenuefh.com'}/portal/signer?token=${encodeURIComponent(token)}`;
+  const mailRes = await sendSignerInvite({
+    to: next.email, signerName: next.name, investorName: entry.name,
+    magicLink: link, accessMethod: next.accessMethod
+  });
+  if (!mailRes.sent) return { ok: false, message: 'Email failed: ' + (mailRes.reason || 'unknown') };
+  return { ok: true, invited: { name: next.name, email: next.email } };
+}
+
+// Public: signer lands on /portal/signer?token=…, the page calls this to
+// fetch their task. Returns the doc context + their assigned fields.
+async function getSignerTask(req, res) {
+  const token = (new URL(req.url, 'http://x').searchParams.get('token') || '').toString();
+  const decoded = verifyToken(token);
+  if (!decoded || decoded.purpose !== 'sign-magic') {
+    return res.status(400).json({ ok: false, message: 'Invalid or expired signing link.' });
+  }
+  let registry;
+  try { ({ registry } = await loadRegistry()); }
+  catch (err) {
+    console.error('signer-task: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, decoded.email);
+  if (!entry || !entry.signingPlan) return res.status(404).json({ ok: false, message: 'Document not found.' });
+  const signerId = decoded.nonce.split(':')[0];
+  const signer = entry.signingPlan.signers.find(s => s.id === signerId);
+  if (!signer || signer.magicNonce !== decoded.nonce) {
+    return res.status(403).json({ ok: false, message: 'This link is no longer valid.' });
+  }
+  if (signer.signedAt) {
+    return res.status(409).json({ ok: false, message: 'You have already signed this document.' });
+  }
+  // Enforce sequential order — refuse if an earlier signer hasn't signed yet.
+  const sorted = [...entry.signingPlan.signers].sort((a, b) => a.order - b.order);
+  const earlierPending = sorted.find(s => s.order < signer.order && !s.signedAt);
+  if (earlierPending) {
+    return res.status(409).json({ ok: false, message: 'Waiting on a prior signer to complete first.' });
+  }
+  const fields = entry.signingPlan.fields.filter(f => f.signerId === signer.id);
+  return res.status(200).json({
+    ok: true,
+    signer: { id: signer.id, name: signer.name, email: signer.email },
+    investor: { name: entry.name },
+    fields,
+    pdfUrl: `/api/portal/blank-pdf?token=${encodeURIComponent(token)}`
+  });
+}
+
+// Public: signer submits typed signature + optional name/title/initials.
+// We overlay only that signer's fields onto the latest PDF, save it back, then
+// either invite the next signer or finalize.
+async function postSignerSign(req, res) {
+  const body = await readJsonBody(req);
+  const token = String(body?.token || '');
+  const typedSignature = String(body?.typedSignature || '').trim();
+  const nameInput = String(body?.name || '').trim();
+  const titleInput = String(body?.title || '').trim();
+  const initialsInput = String(body?.initials || '').trim();
+  const agreed = !!body?.agreed;
+
+  if (!agreed) return res.status(400).json({ ok: false, message: 'You must acknowledge the terms.' });
+  if (!typedSignature) return res.status(400).json({ ok: false, message: 'Typed signature is required.' });
+
+  const decoded = verifyToken(token);
+  if (!decoded || decoded.purpose !== 'sign-magic') {
+    return res.status(400).json({ ok: false, message: 'Invalid or expired signing link.' });
+  }
+
+  let registry, fileId, drive;
+  try { ({ registry, fileId, drive } = await loadRegistry()); }
+  catch (err) {
+    console.error('signer-sign: registry load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  const entry = findByEmail(registry, decoded.email);
+  if (!entry || !entry.signingPlan) return res.status(404).json({ ok: false, message: 'Document not found.' });
+  const signerId = decoded.nonce.split(':')[0];
+  const plan = entry.signingPlan;
+  const signerIdx = plan.signers.findIndex(s => s.id === signerId);
+  const signer = signerIdx === -1 ? null : plan.signers[signerIdx];
+  if (!signer || signer.magicNonce !== decoded.nonce) {
+    return res.status(403).json({ ok: false, message: 'This link is no longer valid.' });
+  }
+  if (signer.signedAt) return res.status(409).json({ ok: false, message: 'You have already signed.' });
+  const sorted = [...plan.signers].sort((a, b) => a.order - b.order);
+  const earlierPending = sorted.find(s => s.order < signer.order && !s.signedAt);
+  if (earlierPending) return res.status(409).json({ ok: false, message: 'Waiting on a prior signer.' });
+
+  const myFields = plan.fields.filter(f => f.signerId === signer.id);
+  if (myFields.length === 0) {
+    // Nothing to draw — just mark signed and advance.
+  }
+
+  let signedBytes;
+  try {
+    const sourceId = entry.signingProgressPdfId || entry.blankPdfId;
+    const bytes = await downloadFile(drive, sourceId);
+    signedBytes = await applyFieldsForSigner(bytes, myFields, {
+      typedSignature, name: nameInput || signer.name, title: titleInput,
+      initials: initialsInput, dateIso: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('signer-sign: overlay failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not apply signature.' });
+  }
+
+  // Determine if this is the final signer; choose filename accordingly.
+  const isLast = sorted.every(s => s.id === signer.id || s.signedAt);
+  const filename = isLast
+    ? 'fully-executed-signed-document.pdf'
+    : `signed-step-${signer.order + 1}-${slugify(signer.name)}.pdf`;
+
+  let uploaded;
+  try {
+    uploaded = await uploadFile(drive, entry.folderId, filename, 'application/pdf', signedBytes);
+  } catch (err) {
+    console.error('signer-sign: upload failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not save signed PDF.' });
+  }
+
+  signer.signedAt = new Date().toISOString();
+  signer.magicNonce = null; // consume the link
+  plan.signers[signerIdx] = signer;
+  const patch = { signingPlan: plan, signingProgressPdfId: uploaded.id };
+  if (isLast) {
+    patch.signedAt = patch.signedAt || new Date().toISOString();
+    patch.signedPdfId = uploaded.id;
+  }
+  updateEntry(registry, entry.email, patch);
+  await saveRegistry(drive, fileId, registry);
+
+  if (isLast) {
+    sendExecutedCopy({
+      to: entry.email, name: entry.name, principal: entry.principal,
+      pdfBytes: signedBytes, pdfFilename: `${slugify(entry.name)}-executed.pdf`,
+      bcc: KEVIN_EMAIL
+    }).catch(err => console.warn('signer-sign: executed copy email failed', err));
+    sendKevinInvestorSignedNotice({
+      to: KEVIN_EMAIL, investorName: entry.name, principal: entry.principal
+    }).catch(err => console.warn('signer-sign: Kevin notify failed', err));
+  } else {
+    // Re-load fresh registry state then invite the next signer.
+    await inviteNextSigner({ entry, registry, fileId, drive }).catch(err => {
+      console.warn('signer-sign: next-signer invite failed', err);
+    });
+  }
+  return res.status(200).json({ ok: true, done: isLast });
 }
 
 // ---------- Expired-link page ----------

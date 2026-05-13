@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign document · The Avenue</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+  }
+</script>
+<style>
+  :root{--gold:#D4A24A;--gold-hover:#BC8E3C;--teal-deep:#1F4A52;--text:rgba(255,255,255,0.92);--muted:rgba(255,255,255,0.7);--hairline:rgba(255,255,255,0.12);--input-bg:rgba(0,0,0,0.25);--bg-soft:rgba(0,0,0,0.18);--ink:#1A1816}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--teal-deep);font-family:'Inter',-apple-system,sans-serif;color:var(--text);min-height:100vh}
+  .header{padding:18px 32px;border-bottom:1px solid var(--hairline);background:rgba(0,0,0,0.30)}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:22px;color:white}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 24px 80px}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}
+  @media (max-width:900px){.layout{grid-template-columns:1fr}}
+  h1{font-family:'Cormorant Garamond',serif;font-size:28px;color:white;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .stage{background:#2a2a2a;border:1px solid var(--hairline);border-radius:10px;padding:14px;max-height:78vh;overflow:auto}
+  .pdf-page-wrap{position:relative;margin:0 auto 18px;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.45);background:white}
+  .pdf-page-wrap canvas{display:block}
+  .field-marker{position:absolute;border:2px dashed var(--gold);background:rgba(212,162,74,0.12);border-radius:4px;padding:2px 6px;font-size:11px;color:#1A1816;background-color:rgba(212,162,74,0.7);transform:translate(-2px,-2px);pointer-events:none;white-space:nowrap}
+  .side{background:var(--bg-soft);border:1px solid var(--hairline);border-radius:12px;padding:20px;align-self:start;position:sticky;top:18px;max-height:78vh;overflow:auto}
+  .side h3{font-family:'Cormorant Garamond',serif;font-size:18px;margin:0 0 12px;color:white;font-weight:600}
+  .field-label{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px;display:block}
+  .side input[type=text]{width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:14px;font-family:inherit}
+  .side input[type=text]:focus{outline:none;border-color:var(--gold)}
+  .sig-preview{font-family:'Times New Roman',Georgia,serif;font-style:italic;font-size:24px;color:#1a3a7a;padding:14px;background:white;border-radius:8px;margin-top:6px;min-height:52px;text-align:center}
+  .check-row{display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:13px;color:var(--muted)}
+  .check-row input{margin-top:3px}
+  .sign-btn{margin-top:18px;width:100%;background:var(--gold);color:var(--ink);border:none;padding:14px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .sign-btn:hover{background:var(--gold-hover);color:white}
+  .sign-btn:disabled{opacity:.45;cursor:not-allowed}
+  .err{color:#ff9a9a;font-size:13px;margin-top:10px;min-height:1.2em}
+  .done{color:#9FD6A8;font-size:14px;margin-top:10px}
+  .center{text-align:center;padding:60px 20px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="header"><div class="brand">The Avenue<span style="opacity:.5;font-size:13px;margin-left:8px"> · Sign document</span></div></div>
+  <div class="wrap" id="root">
+    <div class="center">Loading your signing task…</div>
+  </div>
+<script>
+  const CSS_SCALE = 1.4;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token') || '';
+  const root = document.getElementById('root');
+  let task = null;
+  let pageScales = [];
+
+  function escape(s){return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c])}
+
+  async function init() {
+    if (!token) { root.innerHTML = '<div class="center">Missing signing token.</div>'; return; }
+    let data;
+    try {
+      const res = await fetch('/api/portal/signer-task?token=' + encodeURIComponent(token));
+      data = await res.json();
+    } catch { root.innerHTML = '<div class="center">Network error.</div>'; return; }
+    if (!data.ok) { root.innerHTML = '<div class="center">' + escape(data.message || 'This link is no longer valid.') + '</div>'; return; }
+    task = data;
+    render();
+  }
+
+  function render() {
+    const needsTitle = task.fields.some(f => f.type === 'title');
+    const needsName = task.fields.some(f => f.type === 'name');
+    const needsInitials = task.fields.some(f => f.type === 'initials');
+    root.innerHTML = `
+      <h1>Hello ${escape(task.signer.name.split(' ')[0])} — please sign below</h1>
+      <p class="sub">You're signing the document for <strong>${escape(task.investor.name)}</strong>. The highlighted boxes show where your inputs will appear.</p>
+      <div class="layout">
+        <div class="stage" id="stage"></div>
+        <div class="side">
+          <h3>Your signature</h3>
+          <label class="field-label">Type your full legal name</label>
+          <input type="text" id="sig" placeholder="${escape(task.signer.name)}" autocomplete="off">
+          <div class="sig-preview" id="sigPreview">${escape(task.signer.name)}</div>
+          ${needsName ? `<label class="field-label">Printed name</label><input type="text" id="nameInput" value="${escape(task.signer.name)}">` : ''}
+          ${needsTitle ? `<label class="field-label">Title</label><input type="text" id="titleInput" placeholder="e.g. Member">` : ''}
+          ${needsInitials ? `<label class="field-label">Initials</label><input type="text" id="initialsInput" maxlength="6">` : ''}
+          <div class="check-row">
+            <input type="checkbox" id="agreed">
+            <label for="agreed">I agree this typed signature is my legally-binding electronic signature.</label>
+          </div>
+          <button class="sign-btn" id="signBtn">Sign &amp; submit</button>
+          <div class="err" id="err"></div>
+        </div>
+      </div>
+    `;
+    const sig = document.getElementById('sig');
+    const prev = document.getElementById('sigPreview');
+    sig.addEventListener('input', () => { prev.textContent = sig.value || task.signer.name; });
+    document.getElementById('signBtn').addEventListener('click', submit);
+    renderPdf();
+  }
+
+  async function renderPdf() {
+    const stage = document.getElementById('stage');
+    stage.innerHTML = '<div class="center">Rendering document…</div>';
+    let doc;
+    try {
+      doc = await pdfjsLib.getDocument({ url: task.pdfUrl }).promise;
+    } catch { stage.innerHTML = '<div class="center">Could not load document.</div>'; return; }
+    stage.innerHTML = '';
+    pageScales = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const viewport = page.getViewport({ scale: CSS_SCALE });
+      const wrap = document.createElement('div');
+      wrap.className = 'pdf-page-wrap';
+      wrap.style.width = viewport.width + 'px';
+      wrap.style.height = viewport.height + 'px';
+      wrap.dataset.page = String(p - 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      wrap.appendChild(canvas);
+      stage.appendChild(wrap);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      const unscaled = page.getViewport({ scale: 1 });
+      pageScales.push({ width: unscaled.width, height: unscaled.height, cssScale: CSS_SCALE });
+    }
+    // Draw markers for this signer's fields.
+    for (const f of task.fields) {
+      const wrap = document.querySelector(`.pdf-page-wrap[data-page="${f.page}"]`);
+      if (!wrap) continue;
+      const s = pageScales[f.page];
+      const cssX = f.x * s.cssScale;
+      const cssY = (s.height - f.y) * s.cssScale;
+      const el = document.createElement('div');
+      el.className = 'field-marker';
+      el.style.left = cssX + 'px';
+      el.style.top = cssY + 'px';
+      el.textContent = f.type;
+      wrap.appendChild(el);
+    }
+  }
+
+  async function submit() {
+    const errEl = document.getElementById('err');
+    errEl.textContent = '';
+    const btn = document.getElementById('signBtn');
+    const typedSignature = document.getElementById('sig').value.trim();
+    const agreed = document.getElementById('agreed').checked;
+    const nameEl = document.getElementById('nameInput');
+    const titleEl = document.getElementById('titleInput');
+    const initialsEl = document.getElementById('initialsInput');
+    if (!typedSignature) { errEl.textContent = 'Please type your signature.'; return; }
+    if (!agreed) { errEl.textContent = 'Please confirm your electronic signature.'; return; }
+    btn.disabled = true; btn.textContent = 'Signing…';
+    try {
+      const res = await fetch('/api/portal/signer-sign', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token, typedSignature, agreed,
+          name: nameEl ? nameEl.value : '',
+          title: titleEl ? titleEl.value : '',
+          initials: initialsEl ? initialsEl.value : ''
+        })
+      });
+      const data = await res.json();
+      if (!data.ok) { errEl.textContent = data.message || 'Could not sign.'; btn.disabled = false; btn.textContent = 'Sign & submit'; return; }
+      root.innerHTML = `<div class="center"><h1>${data.done ? 'All done — thank you' : 'Signed — thank you'}</h1><p class="sub">${data.done ? 'The fully-executed document has been delivered to all parties.' : "We've notified the next signer. You'll receive a final copy by email when everyone has signed."}</p></div>`;
+    } catch {
+      errEl.textContent = 'Network error.'; btn.disabled = false; btn.textContent = 'Sign & submit';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

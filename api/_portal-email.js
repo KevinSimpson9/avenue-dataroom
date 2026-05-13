@@ -150,6 +150,25 @@ export async function sendKevinInvestorSignedNotice({ to, investorName, principa
   });
 }
 
+// ---------- 6. Magic-link signer invite ----------
+// Sent to an additional signer (non-investor, non-admin) when it's their turn
+// in the signing order. The link opens a minimal signing page.
+export async function sendSignerInvite({ to, signerName, investorName, magicLink, accessMethod }) {
+  const greeting = signerName ? `Hello ${signerName.split(' ')[0]},` : 'Hello,';
+  const label = accessMethod === 'account' ? 'Sign in and review the document' : 'Open & sign the document';
+  return send({
+    to,
+    subject: `Action required: please sign ${investorName ? `${investorName}'s` : 'a'} document`,
+    html: shell(`
+      <p>${greeting}</p>
+      <p>You've been added as a signer on a document${investorName ? ` related to <strong>${investorName}</strong>` : ''}. Open the link below to review and sign the parts assigned to you.</p>
+      ${ctaButton(label, magicLink)}
+      <p style="font-size: 13px; color: #666;">This link is unique to you. Once you sign, the next signer (if any) will be notified automatically.</p>
+    `),
+    text: `${greeting}\n\nYou've been added as a signer on a document${investorName ? ` related to ${investorName}` : ''}. Open this link to sign:\n\n${magicLink}`
+  });
+}
+
 // ---------- Helpers ----------
 function formatMoney(amount) {
   const n = Number(amount);

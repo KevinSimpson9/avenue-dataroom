@@ -9,6 +9,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+  }
+</script>
 <style>
   :root{--gold:#D4A24A;--gold-hover:#BC8E3C;--teal-deep:#1F4A52;--teal:#2A6068;--cream:#F5EFE6;--ink:#1A1816;--muted:rgba(255,255,255,0.7);--text:rgba(255,255,255,0.92);--hairline:rgba(255,255,255,0.12);--input-bg:rgba(0,0,0,0.25);--bg-soft:rgba(0,0,0,0.18)}
   *{box-sizing:border-box}
@@ -97,6 +103,32 @@
 
   .dataroom-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-size:12px;font-weight:500;text-decoration:none;margin-right:14px}
   .dataroom-link:hover{background:rgba(218,165,32,0.08)}
+
+  /* Signing-plan editor */
+  .plan-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px}
+  @media (max-width:980px){.plan-layout{grid-template-columns:1fr}}
+  .pdf-stage{background:#2a2a2a;border:1px solid var(--hairline);border-radius:10px;padding:14px;max-height:78vh;overflow:auto;position:relative}
+  .pdf-page-wrap{position:relative;margin:0 auto 18px;display:block;box-shadow:0 6px 20px rgba(0,0,0,0.45);background:white}
+  .pdf-page-wrap canvas{display:block}
+  .pdf-page-wrap .field-layer{position:absolute;inset:0;cursor:crosshair}
+  .pdf-field{position:absolute;border:1.5px solid;border-radius:4px;padding:3px 6px;font-size:11px;color:white;cursor:grab;background:rgba(0,0,0,0.35);user-select:none;white-space:nowrap;transform:translate(-2px,-2px)}
+  .pdf-field .x{margin-left:6px;color:rgba(255,255,255,0.65);cursor:pointer}
+  .pdf-field .x:hover{color:#ff9a9a}
+  .plan-side{background:var(--bg-soft);border:1px solid var(--hairline);border-radius:12px;padding:18px;align-self:start;position:sticky;top:18px;max-height:78vh;overflow:auto}
+  .plan-side h3{font-family:'Cormorant Garamond',serif;font-size:18px;margin:0 0 12px;color:white;font-weight:600}
+  .signer-row{background:rgba(0,0,0,0.22);border:1px solid var(--hairline);border-radius:10px;padding:10px;margin-bottom:10px;border-left:4px solid}
+  .signer-row.active{box-shadow:0 0 0 2px rgba(212,162,74,0.35)}
+  .signer-row input,.signer-row select{width:100%;padding:6px 8px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:6px;color:var(--text);font-size:12px;font-family:inherit;margin-bottom:6px}
+  .signer-row .meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-top:4px}
+  .signer-row button.use{background:transparent;border:1px solid var(--hairline);color:var(--gold);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+  .signer-row button.use.active{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .signer-row button.rm{background:transparent;border:none;color:#ff9a9a;cursor:pointer;font-size:11px}
+  .field-types{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .field-types button{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:5px 9px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+  .field-types button.sel{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .plan-hint{font-size:12px;color:var(--muted);margin:8px 0 4px;line-height:1.4}
+  .plan-actions{display:flex;gap:8px;margin-top:14px}
+  .plan-actions .add-btn{flex:1;text-align:center}
 
   @media (max-width:880px){.summary{grid-template-columns:1fr 1fr}.add-grid{grid-template-columns:1fr 1fr}.brand-tag{display:none}.body{padding:24px 18px 60px}.header{padding:14px 18px}}
   @media (max-width:600px){
@@ -290,6 +322,7 @@
       <td>
         <div class="actions-cell">
           ${inv.deletedAt ? '' : `<button class="row-btn primary" data-act="open" data-email="${escape(inv.email)}">Open folder →</button>`}
+          ${inv.deletedAt ? '' : `<button class="row-btn" data-act="plan" data-email="${escape(inv.email)}">Signers</button>`}
           ${inv.state === 'awaiting-lukas' && me && me.email && me.email.toLowerCase() === LUKAS_EMAIL ? `<button class="row-btn" data-act="sign-as-lukas" data-email="${escape(inv.email)}">Sign now</button>` : ''}
           ${inv.deletedAt ? '' : `<button class="row-btn" data-act="resend" data-email="${escape(inv.email)}">Resend link</button>`}
           ${inv.deletedAt ? '' : `<button class="row-btn danger" data-act="remove" data-email="${escape(inv.email)}">Remove</button>`}
@@ -301,6 +334,7 @@
   function rowAction(act, email) {
     if (act === 'open') { window.location.search = '?email=' + encodeURIComponent(email); return; }
     if (act === 'sign-as-lukas') { window.location.href = '/portal/admin/sign?email=' + encodeURIComponent(email); return; }
+    if (act === 'plan') return renderPlanner(email);
     if (act === 'resend') return resendLink(email);
     if (act === 'remove') return removeInvestor(email);
   }
@@ -317,7 +351,8 @@
       const data = await res.json();
       if (data.ok) {
         const r = await loadRoster(); roster = r;
-        renderRoster();
+        // Transition straight into the signing-plan editor for the new investor.
+        renderPlanner(data.investor.email);
       } else {
         errEl.textContent = data.message || 'Could not create.';
         btn.disabled = false; btn.textContent = 'Create investor & notify Lukas';
@@ -456,6 +491,298 @@
       }
       renderDrillDown(email);
     }
+  }
+
+  // ---------- Signing-plan editor ----------
+  //
+  // Renders the investor's blank PDF in-line via pdf.js. The admin maintains
+  // a list of signers (each color-coded), picks the "active" one + field
+  // type, and clicks anywhere on the page to drop a field. Fields are draggable
+  // and removable. On save, the plan is POSTed to /save-signing-plan and the
+  // admin can then trigger /start-signing to email the first signer.
+  const FIELD_TYPES = ['signature', 'date', 'name', 'title', 'initials'];
+  const SIGNER_COLORS = ['#D4A24A', '#9FD6A8', '#7FB3D5', '#F0A0A0', '#C9A0F0', '#F5C97A'];
+  let plan = { signers: [], fields: [] };
+  let activeSignerId = null;
+  let activeFieldType = 'signature';
+  let plannerEmail = null;
+  let pdfDoc = null;
+  let pageScales = []; // pdf-points-per-CSS-pixel per page (== 1/CSS_SCALE)
+  const CSS_SCALE = 1.4;
+
+  function newId(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 10); }
+  function signerColor(id) {
+    const i = plan.signers.findIndex(s => s.id === id);
+    return SIGNER_COLORS[i % SIGNER_COLORS.length] || '#D4A24A';
+  }
+
+  async function renderPlanner(email) {
+    plannerEmail = email;
+    $bc.innerHTML = `<div class="breadcrumb"><a href="/portal/admin">Investor roster</a><span class="sep">/</span><span style="color:white">${escape(email)}</span><span class="sep">/</span><span style="color:white">Signing plan</span></div>`;
+    $body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:60px 20px">Loading signing plan…</div>';
+
+    let data;
+    try {
+      const res = await fetch('/api/portal/signing-plan?email=' + encodeURIComponent(email));
+      data = await res.json();
+    } catch { $body.innerHTML = '<div class="empty">Network error.</div>'; return; }
+    if (!data.ok) { $body.innerHTML = '<div class="empty">' + escape(data.message || 'Could not load.') + '</div>'; return; }
+    if (!data.investor.blankPdfId) { $body.innerHTML = '<div class="empty">No blank PDF on file. Upload one first.</div>'; return; }
+
+    plan = {
+      signers: (data.plan.signers || []).map(s => ({ ...s })),
+      fields: (data.plan.fields || []).map(f => ({ ...f }))
+    };
+    if (plan.signers.length === 0) {
+      // Seed with one signer = the investor themselves.
+      plan.signers.push({ id: newId('s'), name: data.investor.name, email: data.investor.email, order: 0, accessMethod: 'account', role: 'investor' });
+    }
+    activeSignerId = plan.signers[0].id;
+    activeFieldType = 'signature';
+
+    $body.innerHTML = `
+      <h1>Signing plan · ${escape(data.investor.name)}</h1>
+      <p class="h1-sub">Add signers, pick a field type, then click on the document to place each field. Drag to move, click ✕ to remove.</p>
+      <div class="plan-layout">
+        <div class="pdf-stage" id="pdfStage"></div>
+        <div class="plan-side">
+          <h3>Signers <span style="color:var(--muted);font-weight:400;font-size:12px">(in signing order)</span></h3>
+          <div id="signersList"></div>
+          <button class="row-btn" id="addSignerBtn" style="width:100%;margin-top:4px">+ Add signer</button>
+
+          <h3 style="margin-top:18px">Field to place</h3>
+          <div class="field-types" id="fieldTypes"></div>
+          <p class="plan-hint">Selected signer + field type apply to your next click on the document.</p>
+
+          <div class="plan-actions">
+            <button class="add-btn" id="savePlanBtn">Save plan</button>
+            <button class="row-btn primary" id="startSigningBtn">Start signing →</button>
+          </div>
+          <div class="err" id="planErr"></div>
+          <p class="plan-hint" style="margin-top:14px">Magic-link signers don't need an account. Account signers must sign in to the portal.</p>
+        </div>
+      </div>
+    `;
+
+    renderSignersList();
+    renderFieldTypes();
+    document.getElementById('addSignerBtn').onclick = () => {
+      plan.signers.push({ id: newId('s'), name: '', email: '', order: plan.signers.length, accessMethod: 'magic-link', role: 'extra' });
+      activeSignerId = plan.signers[plan.signers.length - 1].id;
+      renderSignersList();
+    };
+    document.getElementById('savePlanBtn').onclick = savePlan;
+    document.getElementById('startSigningBtn').onclick = startSigning;
+
+    await renderPdfInto(document.getElementById('pdfStage'), '/api/portal/blank-pdf?email=' + encodeURIComponent(email));
+  }
+
+  function renderSignersList() {
+    const wrap = document.getElementById('signersList');
+    if (!wrap) return;
+    wrap.innerHTML = plan.signers.map((s, i) => `
+      <div class="signer-row ${s.id===activeSignerId?'active':''}" style="border-left-color:${signerColor(s.id)}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <strong style="color:white;font-size:12px">Signer ${i + 1}${s.role==='investor'?' · investor':''}</strong>
+          <button class="rm" data-rm="${s.id}">remove</button>
+        </div>
+        <input data-edit="name" data-id="${s.id}" placeholder="Full name" value="${escape(s.name)}">
+        <input data-edit="email" data-id="${s.id}" placeholder="email@example.com" value="${escape(s.email)}">
+        <select data-edit="accessMethod" data-id="${s.id}">
+          <option value="magic-link" ${s.accessMethod==='magic-link'?'selected':''}>Magic-link (email)</option>
+          <option value="account" ${s.accessMethod==='account'?'selected':''}>Portal account</option>
+        </select>
+        <div class="meta">
+          <button type="button" class="use ${s.id===activeSignerId?'active':''}" data-use="${s.id}">${s.id===activeSignerId?'placing as this signer':'click to place fields as this signer'}</button>
+          ${s.signedAt?'<span style="color:#9FD6A8">signed ✓</span>':''}
+        </div>
+      </div>
+    `).join('');
+    wrap.querySelectorAll('[data-edit]').forEach(el => {
+      el.addEventListener('input', () => {
+        const s = plan.signers.find(x => x.id === el.dataset.id);
+        if (s) s[el.dataset.edit] = el.value;
+      });
+    });
+    wrap.querySelectorAll('[data-use]').forEach(el => {
+      el.addEventListener('click', () => { activeSignerId = el.dataset.use; renderSignersList(); });
+    });
+    wrap.querySelectorAll('[data-rm]').forEach(el => {
+      el.addEventListener('click', () => {
+        if (plan.signers.length <= 1) { alert('At least one signer is required.'); return; }
+        const id = el.dataset.rm;
+        plan.signers = plan.signers.filter(s => s.id !== id).map((s, i) => ({ ...s, order: i }));
+        plan.fields = plan.fields.filter(f => f.signerId !== id);
+        if (activeSignerId === id) activeSignerId = plan.signers[0].id;
+        renderSignersList();
+        redrawAllFields();
+      });
+    });
+  }
+
+  function renderFieldTypes() {
+    const wrap = document.getElementById('fieldTypes');
+    if (!wrap) return;
+    wrap.innerHTML = FIELD_TYPES.map(t => `<button data-ft="${t}" class="${t===activeFieldType?'sel':''}">${t}</button>`).join('');
+    wrap.querySelectorAll('[data-ft]').forEach(el => {
+      el.addEventListener('click', () => { activeFieldType = el.dataset.ft; renderFieldTypes(); });
+    });
+  }
+
+  async function renderPdfInto(stage, url) {
+    stage.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">Rendering PDF…</div>';
+    try {
+      const loadingTask = pdfjsLib.getDocument({ url });
+      pdfDoc = await loadingTask.promise;
+    } catch (err) {
+      stage.innerHTML = '<div style="color:#ff9a9a;text-align:center;padding:40px">Could not load PDF.</div>';
+      return;
+    }
+    stage.innerHTML = '';
+    pageScales = [];
+    for (let p = 1; p <= pdfDoc.numPages; p++) {
+      const page = await pdfDoc.getPage(p);
+      const viewport = page.getViewport({ scale: CSS_SCALE });
+      const wrap = document.createElement('div');
+      wrap.className = 'pdf-page-wrap';
+      wrap.style.width = viewport.width + 'px';
+      wrap.style.height = viewport.height + 'px';
+      wrap.dataset.page = String(p - 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      wrap.appendChild(canvas);
+      const layer = document.createElement('div');
+      layer.className = 'field-layer';
+      wrap.appendChild(layer);
+      stage.appendChild(wrap);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      // Save unscaled viewport height so we can convert CSS px → PDF points.
+      const unscaled = page.getViewport({ scale: 1 });
+      pageScales.push({ width: unscaled.width, height: unscaled.height, cssScale: CSS_SCALE });
+      layer.addEventListener('click', (e) => {
+        // Ignore clicks on existing field nodes (drag/remove).
+        if (e.target.closest('.pdf-field')) return;
+        const rect = layer.getBoundingClientRect();
+        const cssX = e.clientX - rect.left;
+        const cssY = e.clientY - rect.top;
+        addFieldAt(p - 1, cssX, cssY);
+      });
+    }
+    redrawAllFields();
+  }
+
+  // CSS coords → PDF points. pdf.js y grows downward (top=0); pdf-lib y grows
+  // upward (bottom=0). Convert by subtracting from page height.
+  function cssToPdf(pageIdx, cssX, cssY) {
+    const s = pageScales[pageIdx];
+    const x = cssX / s.cssScale;
+    const yTop = cssY / s.cssScale;
+    const y = s.height - yTop;
+    return { x, y };
+  }
+  function pdfToCss(pageIdx, x, y) {
+    const s = pageScales[pageIdx];
+    const cssX = x * s.cssScale;
+    const cssY = (s.height - y) * s.cssScale;
+    return { cssX, cssY };
+  }
+
+  function addFieldAt(pageIdx, cssX, cssY) {
+    if (!activeSignerId) { alert('Pick a signer first.'); return; }
+    const { x, y } = cssToPdf(pageIdx, cssX, cssY);
+    const f = { id: newId('f'), signerId: activeSignerId, page: pageIdx, x, y, type: activeFieldType, label: '' };
+    plan.fields.push(f);
+    renderFieldNode(f);
+  }
+
+  function redrawAllFields() {
+    document.querySelectorAll('.field-layer').forEach(l => { l.querySelectorAll('.pdf-field').forEach(n => n.remove()); });
+    plan.fields.forEach(renderFieldNode);
+  }
+
+  function renderFieldNode(f) {
+    const wrap = document.querySelector(`.pdf-page-wrap[data-page="${f.page}"]`);
+    if (!wrap) return;
+    const layer = wrap.querySelector('.field-layer');
+    const { cssX, cssY } = pdfToCss(f.page, f.x, f.y);
+    const color = signerColor(f.signerId);
+    const signer = plan.signers.find(s => s.id === f.signerId);
+    const el = document.createElement('div');
+    el.className = 'pdf-field';
+    el.style.left = cssX + 'px';
+    el.style.top  = cssY + 'px';
+    el.style.borderColor = color;
+    el.style.color = color;
+    el.dataset.fid = f.id;
+    el.innerHTML = `${escape(f.type)} · ${escape((signer && signer.name) || '?')}<span class="x">✕</span>`;
+    el.querySelector('.x').addEventListener('click', (e) => {
+      e.stopPropagation();
+      plan.fields = plan.fields.filter(x => x.id !== f.id);
+      el.remove();
+    });
+    // Simple drag
+    let dragging = false, startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
+    el.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('x')) return;
+      dragging = true;
+      startX = e.clientX; startY = e.clientY;
+      baseLeft = parseFloat(el.style.left); baseTop = parseFloat(el.style.top);
+      el.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const nx = baseLeft + (e.clientX - startX);
+      const ny = baseTop + (e.clientY - startY);
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      el.style.cursor = 'grab';
+      const newCssX = parseFloat(el.style.left);
+      const newCssY = parseFloat(el.style.top);
+      const p = cssToPdf(f.page, newCssX, newCssY);
+      f.x = p.x; f.y = p.y;
+    });
+    layer.appendChild(el);
+  }
+
+  async function savePlan() {
+    const errEl = document.getElementById('planErr'); errEl.textContent = '';
+    // Renumber order based on list position.
+    plan.signers = plan.signers.map((s, i) => ({ ...s, order: i }));
+    try {
+      const res = await fetch('/api/portal/save-signing-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: plannerEmail, signers: plan.signers, fields: plan.fields })
+      });
+      const data = await res.json();
+      if (!data.ok) { errEl.textContent = data.message || 'Save failed.'; return false; }
+      errEl.style.color = '#9FD6A8';
+      errEl.textContent = 'Plan saved.';
+      setTimeout(() => { errEl.textContent = ''; errEl.style.color = ''; }, 2400);
+      return true;
+    } catch { errEl.textContent = 'Network error.'; return false; }
+  }
+
+  async function startSigning() {
+    if (!confirm('Email the first signer their signing link now?\n\nThis will save the current plan and send the invite.')) return;
+    const ok = await savePlan();
+    if (!ok) return;
+    const errEl = document.getElementById('planErr');
+    try {
+      const res = await fetch('/api/portal/start-signing', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: plannerEmail })
+      });
+      const data = await res.json();
+      if (!data.ok) { errEl.style.color = ''; errEl.textContent = data.message || 'Could not start.'; return; }
+      errEl.style.color = '#9FD6A8';
+      errEl.textContent = data.done ? 'All signers have already signed.' : `Invite emailed to ${data.invited.name} (${data.invited.email}).`;
+    } catch { errEl.style.color = ''; errEl.textContent = 'Network error.'; }
   }
 
   init();

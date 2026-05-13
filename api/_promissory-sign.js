@@ -86,6 +86,52 @@ export async function signAsInvestor(bytes, { typedSignature, dateIso }) {
   return doc.save();
 }
 
+// Generic field-driven signing.
+//
+// Used by the multi-signer flow where the admin places fields on the PDF in
+// the admin UI. Each field carries its page index, point coordinates (origin
+// bottom-left, PDF points), and a type. We render the assigned signer's
+// inputs onto each field; fields belonging to other signers are left alone
+// so subsequent signers can fill them in.
+//
+// fields: array of
+//   { id, signerId, page (0-based), x, y, type, label? }
+// where type is one of: 'signature' | 'date' | 'name' | 'title' | 'initials'
+//
+// signerInputs:
+//   { typedSignature, name, title, initials, dateIso }
+export async function applyFieldsForSigner(bytes, fields, signerInputs) {
+  const doc = await PDFDocument.load(bytes);
+  const pages = doc.getPages();
+  const script = await doc.embedFont(StandardFonts.TimesRomanItalic);
+  const plain = await doc.embedFont(StandardFonts.Helvetica);
+  const dateStr = todayLong(signerInputs.dateIso);
+  const sig = String(signerInputs.typedSignature || '').trim();
+  const name = String(signerInputs.name || sig || '').trim();
+  const title = String(signerInputs.title || '').trim();
+  const initials = String(signerInputs.initials || sig.split(/\s+/).map(p => p[0] || '').join('').toUpperCase()).trim();
+
+  for (const f of fields) {
+    const pageIdx = Math.max(0, Math.min(pages.length - 1, Number(f.page) || 0));
+    const page = pages[pageIdx];
+    const x = Number(f.x);
+    const y = Number(f.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    if (f.type === 'signature') {
+      page.drawText(sig, { x, y, size: SCRIPT_FONT_SIZE, font: script, color: rgb(0, 0, 0.45) });
+    } else if (f.type === 'date') {
+      page.drawText(dateStr, { x, y, size: TEXT_FONT_SIZE, font: plain });
+    } else if (f.type === 'name') {
+      page.drawText(name, { x, y, size: TEXT_FONT_SIZE, font: plain });
+    } else if (f.type === 'title') {
+      page.drawText(title, { x, y, size: TEXT_FONT_SIZE, font: plain });
+    } else if (f.type === 'initials') {
+      page.drawText(initials, { x, y, size: TEXT_FONT_SIZE, font: plain });
+    }
+  }
+  return doc.save();
+}
+
 // Draw probe crosshairs at every signature coordinate. Used for visual
 // alignment — call this on a copy of the blank PDF and open the result to
 // see whether the points sit on the right signature lines. Coordinates can
