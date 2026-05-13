@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investor sign-in · The Avenue</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--gold:#D4A24A;--gold-hover:#BC8E3C;--teal-deep:#1F4A52;--cream:#F5EFE6;--ink:#1A1816;--muted:rgba(255,255,255,0.7);--text:rgba(255,255,255,0.92);--hairline:rgba(255,255,255,0.12);--input-bg:rgba(0,0,0,0.25)}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100vh;background:linear-gradient(160deg,var(--teal-deep) 0%,#16363c 100%);font-family:'Inter',-apple-system,sans-serif;color:var(--text);line-height:1.55}
+  body{display:flex;align-items:center;justify-content:center;padding:32px 16px}
+  .card{width:100%;max-width:460px;background:rgba(15,38,42,0.55);border:1px solid var(--hairline);border-radius:18px;padding:42px 38px 36px;text-align:center;backdrop-filter:blur(8px);position:relative}
+  .back-link{position:absolute;top:16px;left:18px;font-size:12px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+  .back-link:hover{color:var(--gold)}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:30px;color:white;line-height:1}
+  .brand-sub{font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-top:4px;margin-bottom:24px}
+  .lock-circle{width:56px;height:56px;margin:8px auto 18px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);display:inline-flex;align-items:center;justify-content:center;color:var(--cream)}
+  h1{font-family:'Cormorant Garamond',serif;font-size:26px;color:white;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px}
+  .field{text-align:left;margin-bottom:14px}
+  .field label{display:block;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:6px}
+  .field input{width:100%;padding:13px 14px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:10px;color:var(--text);font-size:15px;font-family:inherit}
+  .field input:focus{outline:none;border-color:var(--gold)}
+  button.primary{width:100%;background:var(--gold);color:var(--ink);border:none;padding:15px;border-radius:12px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:6px}
+  button.primary:hover:not(:disabled){background:var(--gold-hover);color:white}
+  button.primary:disabled{opacity:0.55;cursor:wait}
+  .bottom{display:flex;justify-content:space-between;margin-top:14px;font-size:12px;align-items:center}
+  .bottom a{color:var(--muted);text-decoration:underline;cursor:pointer}
+  .bottom a:hover{color:var(--gold)}
+  .bottom span{color:rgba(255,255,255,0.45);font-style:italic}
+  .msg{margin-top:12px;font-size:13px;min-height:1.2em;text-align:left}
+  .msg.error{color:#ff9a9a}
+  .msg.success{color:#9FD6A8}
+  .footer-note{margin-top:22px;font-size:11px;color:rgba(255,255,255,0.45)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <a href="/" class="back-link">← Back</a>
+    <div class="brand">The Avenue</div>
+    <div class="brand-sub">Investor Portal</div>
+    <div class="lock-circle">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </svg>
+    </div>
+    <h1>Investor sign-in</h1>
+    <p class="sub">Use the email Kevin has on file for you.</p>
+
+    <form id="signinForm">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="password" required autocomplete="current-password" placeholder="Password">
+      </div>
+      <button type="submit" class="primary" id="submit">Sign in</button>
+      <div class="bottom">
+        <a id="forgotLink">Forgot password?</a>
+        <span>First time? Check your invitation email.</span>
+      </div>
+      <div class="msg" id="msg"></div>
+    </form>
+
+    <p class="footer-note">Committed investors and admins (Kevin / Lukas) sign in here.</p>
+  </div>
+
+  <script>
+    const form = document.getElementById('signinForm');
+    const $email = document.getElementById('email');
+    const $pwd = document.getElementById('password');
+    const $btn = document.getElementById('submit');
+    const $msg = document.getElementById('msg');
+    const $forgot = document.getElementById('forgotLink');
+
+    function setMsg(text, kind) {
+      $msg.textContent = text || '';
+      $msg.className = 'msg' + (kind ? ' ' + kind : '');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setMsg('', '');
+      const email = $email.value.trim();
+      const password = $pwd.value;
+      if (!email || !password) { setMsg('Enter your email and password.', 'error'); return; }
+      $btn.disabled = true; $btn.textContent = 'Signing in…';
+      try {
+        const res = await fetch('/api/portal/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.ok && data.redirect) {
+          window.location.href = data.redirect;
+          return;
+        }
+        if (data.ok && data.needsSetup) {
+          setMsg(data.message || 'Check your inbox — we just emailed you a link to set your password.', 'success');
+        } else {
+          setMsg(data.message || 'Email or password is incorrect.', 'error');
+        }
+      } catch (err) {
+        setMsg('Network error. Please try again.', 'error');
+      } finally {
+        $btn.disabled = false;
+        $btn.textContent = 'Sign in';
+      }
+    });
+
+    $forgot.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = $email.value.trim();
+      if (!email) { setMsg('Enter your email first, then click Forgot password.', 'error'); return; }
+      setMsg('', '');
+      try {
+        const res = await fetch('/api/portal/forgot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        setMsg(data.message || 'If that email is registered, a sign-in link is on its way.', 'success');
+      } catch (err) {
+        setMsg('Network error. Please try again.', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

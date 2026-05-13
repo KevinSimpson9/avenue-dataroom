@@ -227,7 +227,7 @@
 
 <div id="gate">
   <div class="gate-card">
-    <a href="#" class="investor-login-corner" id="investorLoginCorner">
+    <a href="/portal/sign-in" class="investor-login-corner">
       Investor login
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
@@ -265,18 +265,6 @@
         <div class="forgot-msg" id="forgotMsg"></div>
       </div>
 
-      <!-- Investor portal sign-in (committed investors + admins) -->
-      <div class="investor-form" id="investorForm" hidden>
-        <p class="investor-help">Sign in to your investor portal.</p>
-        <input type="email" class="investor-input" id="investorEmail" placeholder="you@example.com" autocomplete="email">
-        <input type="password" class="investor-input" id="investorPassword" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
-        <button type="button" class="investor-submit" id="investorSubmit">Sign in</button>
-        <div class="investor-bottom">
-          <a href="#" id="investorForgot">Forgot password?</a>
-          <span>First time? Check your invitation email.</span>
-        </div>
-        <div class="investor-msg" id="investorMsg"></div>
-      </div>
     </form>
 
     <div class="nda-card">
@@ -522,93 +510,6 @@
     } finally {
       forgotSubmit.disabled = false;
       forgotSubmit.textContent = 'Send password';
-    }
-  });
-
-  // --- Investor / admin portal login ---
-  const investorCorner = document.getElementById('investorLoginCorner');
-  const investorForm = document.getElementById('investorForm');
-  const investorEmail = document.getElementById('investorEmail');
-  const investorPassword = document.getElementById('investorPassword');
-  const investorSubmit = document.getElementById('investorSubmit');
-  const investorMsg = document.getElementById('investorMsg');
-  const investorForgotLink = document.getElementById('investorForgot');
-
-  investorCorner.addEventListener('click', (e) => {
-    e.preventDefault();
-    investorForm.hidden = !investorForm.hidden;
-    if (!investorForm.hidden) {
-      // Hide the other forms so the gate doesn't feel cluttered
-      if (!forgotForm.hidden) forgotForm.hidden = true;
-      setTimeout(() => investorEmail.focus(), 50);
-    }
-  });
-
-  async function submitInvestorLogin() {
-    investorMsg.textContent = '';
-    investorMsg.className = 'investor-msg';
-    const email = (investorEmail.value || '').trim();
-    const password = investorPassword.value || '';
-    if (!email || !password) {
-      investorMsg.textContent = 'Enter your email and password.';
-      investorMsg.classList.add('error');
-      return;
-    }
-    investorSubmit.disabled = true;
-    investorSubmit.textContent = 'Signing in…';
-    try {
-      const res = await fetch('/api/portal/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (data.ok && data.redirect) {
-        window.location.href = data.redirect;
-        return;
-      }
-      if (data.ok && data.needsSetup) {
-        investorMsg.textContent = data.message || 'Check your inbox — we just emailed you a link to set your password.';
-        investorMsg.classList.add('success');
-      } else {
-        investorMsg.textContent = data.message || 'Email or password is incorrect.';
-        investorMsg.classList.add('error');
-      }
-    } catch (err) {
-      investorMsg.textContent = 'Network error. Please try again.';
-      investorMsg.classList.add('error');
-    } finally {
-      investorSubmit.disabled = false;
-      investorSubmit.textContent = 'Sign in';
-    }
-  }
-
-  investorSubmit.addEventListener('click', submitInvestorLogin);
-  investorPassword.addEventListener('keydown', e => { if (e.key === 'Enter') submitInvestorLogin(); });
-  investorEmail.addEventListener('keydown', e => { if (e.key === 'Enter') submitInvestorLogin(); });
-
-  investorForgotLink.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = (investorEmail.value || '').trim();
-    if (!email) {
-      investorMsg.textContent = 'Enter your email first, then click Forgot password.';
-      investorMsg.className = 'investor-msg error';
-      return;
-    }
-    investorMsg.textContent = '';
-    investorMsg.className = 'investor-msg';
-    try {
-      const res = await fetch('/api/portal/forgot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      investorMsg.textContent = data.message || 'If that email is registered, a sign-in link is on its way.';
-      investorMsg.classList.add('success');
-    } catch (err) {
-      investorMsg.textContent = 'Network error. Please try again.';
-      investorMsg.classList.add('error');
     }
   });
 

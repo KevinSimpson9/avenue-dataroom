@@ -73,6 +73,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       if (route === '' || route === 'index') return renderInvestorPortal(req, res);
+      if (route === 'sign-in') return renderSignInPage(req, res);
       if (route === 'admin') return renderAdminDashboard(req, res);
       if (route === 'admin/sign') return renderAdminSign(req, res);
       if (route === 'setup') return getSetupPage(req, res);
@@ -139,21 +140,31 @@ function servePublicFile(res, filename) {
 
 function renderInvestorPortal(req, res) {
   const session = verifyPortalSession(req);
-  if (!session) { res.writeHead(302, { Location: '/' }); return res.end(); }
+  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role === 'admin') { res.writeHead(302, { Location: '/portal/admin' }); return res.end(); }
   return servePublicFile(res, 'portal.html');
 }
 
+function renderSignInPage(req, res) {
+  // If already signed in, skip the form and route them to their portal
+  const session = verifyPortalSession(req);
+  if (session) {
+    res.writeHead(302, { Location: session.role === 'admin' ? '/portal/admin' : '/portal' });
+    return res.end();
+  }
+  return servePublicFile(res, 'portal-signin.html');
+}
+
 function renderAdminDashboard(req, res) {
   const session = verifyPortalSession(req);
-  if (!session) { res.writeHead(302, { Location: '/' }); return res.end(); }
+  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
   return servePublicFile(res, 'portal-admin.html');
 }
 
 function renderAdminSign(req, res) {
   const session = verifyPortalSession(req);
-  if (!session) { res.writeHead(302, { Location: '/' }); return res.end(); }
+  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
   return servePublicFile(res, 'portal-admin-sign.html');
 }
