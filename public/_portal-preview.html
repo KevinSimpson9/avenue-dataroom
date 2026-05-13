@@ -675,9 +675,10 @@
 
       <!-- Investor login form (revealed by the top-right corner button) -->
       <div class="investor-form" id="inv-form" style="display:none;">
-        <p class="investor-form-help">Enter your investor code (provided privately by Kevin).</p>
-        <input type="text" class="code-input" placeholder="XXXX-XXX-XXXX" value="ZACH-AVE-2026" disabled>
-        <button class="investor-submit" disabled>Continue →</button>
+        <p class="investor-form-help">Enter the email Kevin has on file for you. We'll send a single-use sign-in link to your inbox (expires in 15 minutes).</p>
+        <input type="email" class="code-input" placeholder="you@example.com" value="zach@example.com" disabled style="font-family:'Inter',sans-serif;letter-spacing:normal">
+        <button class="investor-submit" disabled>Email me a sign-in link</button>
+        <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5">No password to remember. No code to lose. We email a fresh link every time you sign in.</p>
       </div>
 
       <button class="link-btn" disabled>Forgot password?</button>
