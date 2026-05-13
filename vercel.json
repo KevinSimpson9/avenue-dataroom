@@ -5,8 +5,8 @@
     { "source": "/index.html", "destination": "/api/index" },
     { "source": "/room", "destination": "/api/room" },
     { "source": "/room.html", "destination": "/api/room" },
-    { "source": "/portal", "destination": "/api/portal" },
-    { "source": "/portal.html", "destination": "/api/portal" },
+    { "source": "/portal", "destination": "/api/portal/index" },
+    { "source": "/portal.html", "destination": "/api/portal/index" },
     { "source": "/portal/:rest*", "destination": "/api/portal/:rest*" }
   ],
   "headers": [
