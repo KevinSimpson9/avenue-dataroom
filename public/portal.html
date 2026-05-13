@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your investor portal · The Avenue</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold:#D4A24A;--gold-hover:#BC8E3C;--teal-deep:#1F4A52;--teal:#2A6068;
+    --cream:#F5EFE6;--ink:#1A1816;--muted:rgba(255,255,255,0.7);--text:rgba(255,255,255,0.92);
+    --hairline:rgba(255,255,255,0.12);--input-bg:rgba(0,0,0,0.25);--bg-soft:rgba(0,0,0,0.18);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--teal-deep);font-family:'Inter',-apple-system,sans-serif;color:var(--text);line-height:1.55;min-height:100vh}
+  a{color:var(--gold)}
+  .header{border-bottom:1px solid var(--hairline);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.22)}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:22px;color:white}
+  .brand-tag{opacity:.5;font-size:13px;margin-left:8px}
+  .status{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted)}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;margin-right:6px}
+  .signout{color:var(--gold);font-size:13px;text-decoration:none;border-bottom:1px solid rgba(212,162,74,0.3);padding-bottom:1px}
+
+  .body{max-width:960px;margin:0 auto;padding:40px 32px 80px}
+  .hero{margin-bottom:32px}
+  .eyebrow{font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;font-weight:500}
+  .hero h1{font-family:'Cormorant Garamond',serif;font-size:40px;line-height:1.1;color:white;margin:0 0 10px;font-weight:600}
+  .hero h1 em{font-family:inherit;color:var(--gold);font-style:normal}
+  .hero p{font-size:15px;color:var(--text);margin:0;max-width:680px}
+
+  .card{background:var(--bg-soft);border:1px solid var(--hairline);border-radius:14px;padding:26px;margin-bottom:26px}
+  .card h2{font-family:'Cormorant Garamond',serif;font-size:22px;color:white;margin:0 0 14px;font-weight:600}
+  .card .lead{font-size:13px;color:var(--muted);margin:-8px 0 18px}
+
+  .terms-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:14px}
+  .terms-row:last-child{border-bottom:0}
+  .terms-row .lbl{color:var(--muted)}
+  .terms-row .val{color:white;font-weight:500}
+  .terms-row .val em{color:var(--gold);font-style:normal;font-family:'Cormorant Garamond',serif;font-size:1.1em}
+
+  .banner{padding:14px 18px;border-radius:12px;display:flex;align-items:center;gap:14px;font-size:14px;margin-bottom:18px}
+  .banner.wait{background:rgba(212,162,74,0.10);border:1px solid rgba(212,162,74,0.4);color:var(--cream)}
+  .banner.signed{background:rgba(159,214,168,0.14);border:1px solid rgba(159,214,168,0.4);color:#9FD6A8}
+  .banner svg{flex-shrink:0;width:22px;height:22px}
+
+  .pdf-frame{width:100%;height:520px;background:var(--ink);border:1px solid var(--hairline);border-radius:10px;margin-bottom:18px}
+  .pdf-frame iframe{width:100%;height:100%;border:0;border-radius:10px;display:block}
+
+  .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .field label{display:block;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;padding:12px 14px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:10px;color:var(--text);font-size:15px;font-family:inherit}
+  .field input:focus{outline:none;border-color:var(--gold)}
+  .field input.sig{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;letter-spacing:0.02em}
+  .agree{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted);margin:14px 0 18px}
+  .agree input{margin-top:3px}
+  .sign-btn{width:100%;padding:16px;background:var(--gold);color:var(--ink);border:none;border-radius:12px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer}
+  .sign-btn:disabled{opacity:0.5;cursor:not-allowed}
+  .sign-btn:hover:not(:disabled){background:var(--gold-hover);color:white}
+  .err{color:#ff9a9a;font-size:13px;margin-top:10px;min-height:1.2em}
+  .ok{color:#9FD6A8;font-size:13px;margin-top:10px}
+
+  .upload-zone{border:1.5px dashed var(--hairline);border-radius:12px;padding:30px 20px;text-align:center;margin-bottom:22px;cursor:pointer}
+  .upload-zone:hover{border-color:var(--gold)}
+  .upload-zone.drag{border-color:var(--gold);background:rgba(212,162,74,0.06)}
+  .upload-icon{width:44px;height:44px;margin:0 auto 12px;border-radius:50%;background:rgba(212,162,74,0.16);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .upload-title{color:white;margin-bottom:4px}
+  .upload-sub{color:var(--muted);font-size:12px}
+  .doc-list{list-style:none;padding:0;margin:0}
+  .doc-list li{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg-soft);border:1px solid var(--hairline);border-radius:10px;margin-bottom:8px;font-size:14px;text-decoration:none;color:inherit}
+  .doc-list li:hover{border-color:var(--gold)}
+  .doc-tag{width:36px;height:36px;background:rgba(212,162,74,0.15);color:var(--gold);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;letter-spacing:0.04em;flex-shrink:0}
+  .doc-tag.signed{background:rgba(159,214,168,0.14);color:#9FD6A8}
+  .doc-info{flex:1}
+  .doc-name{color:white;font-size:14px;text-decoration:none}
+  .doc-name:hover{text-decoration:underline}
+  .doc-meta{color:var(--muted);font-size:12px;margin-top:2px}
+
+  .footer-msg{margin-top:18px;font-size:12px;color:rgba(255,255,255,0.55);font-style:italic;text-align:center}
+  @media (max-width:600px){.sig-grid{grid-template-columns:1fr}.hero h1{font-size:30px}.body{padding:28px 18px 60px}.header{padding:14px 18px}.brand-tag{display:none}.pdf-frame{height:420px}}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">The Avenue<span class="brand-tag"> · Investor Portal</span></div>
+    <div class="status">
+      <span id="signed-as"><span class="status-dot"></span>Loading…</span>
+      <a href="/api/portal/logout" class="signout">Sign out</a>
+    </div>
+  </div>
+
+  <div class="body" id="body">
+    <div style="text-align:center;color:var(--muted);padding:80px 20px">Loading your portal…</div>
+  </div>
+
+<script>
+  const $body = document.getElementById('body');
+  const $signedAs = document.getElementById('signed-as');
+
+  function $(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
+  function escape(s){ return String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]); }
+  function fmtMoney(n){ const x=Number(n); return Number.isFinite(x) ? x.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}) : '—'; }
+  function fmtDate(iso){ if(!iso) return ''; return new Date(iso).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
+  function fileExt(name){ const m=(name||'').match(/\.([^.]+)$/); return m ? m[1].toUpperCase() : ''; }
+
+  let state = null; // { investor, files }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/portal/folder');
+      if (res.status === 401) { window.location.href = '/'; return; }
+      state = await res.json();
+      if (!state.ok) {
+        $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">' + escape(state.message||'Unable to load portal.') + '</div>';
+        return;
+      }
+      render();
+    } catch (err) {
+      $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load portal. Please refresh.</div>';
+    }
+  }
+
+  function render() {
+    const inv = state.investor;
+    const files = state.files || [];
+    $signedAs.innerHTML = '<span class="status-dot"></span>Signed in as ' + escape(inv.name);
+
+    const lukasSignedFile = files.find(f => f.name === 'lukas-signed-promissory-note.pdf');
+    const signedFile = files.find(f => f.name === 'signed-promissory-note.pdf');
+    const blankFile = files.find(f => f.name === 'blank-promissory-note.pdf');
+
+    // State machine
+    const fullyExecuted = !!inv.signedAt;
+    const readyToSign = !fullyExecuted && !!inv.lukasSignedAt;
+    const awaitingLukas = !fullyExecuted && !inv.lukasSignedAt;
+
+    const previewFile = signedFile || lukasSignedFile || blankFile || null;
+    const previewUrl = previewFile ? `https://drive.google.com/file/d/${previewFile.id}/preview` : null;
+
+    let html = `
+      <div class="hero">
+        <div class="eyebrow">Promissory Note · The Avenue at Fountain Hills</div>
+        <h1>${fullyExecuted ? 'Welcome back, ' : 'Welcome, '}<em>${escape(firstName(inv.name))}</em>.</h1>
+        <p>${
+          fullyExecuted
+            ? 'Your note is fully executed. Kevin has been notified and will follow up with wire instructions.'
+            : readyToSign
+              ? 'Your promissory note is ready for your counter-signature. Review the document below and sign as Creditor.'
+              : 'Lukas Bondy is signing the Debtor and Guarantor portions. You\\'ll be emailed the moment your note is ready to counter-sign.'
+        }</p>
+      </div>
+
+      <div class="card">
+        <h2>Your note at a glance</h2>
+        <div class="terms-row"><span class="lbl">Principal</span><span class="val">${fmtMoney(inv.principal)}</span></div>
+        <div class="terms-row"><span class="lbl">Interest rate</span><span class="val">${escape(inv.rate||'')}</span></div>
+        <div class="terms-row"><span class="lbl">Term</span><span class="val">${escape(String(inv.termMonths||''))} months</span></div>
+        <div class="terms-row"><span class="lbl">Personal guarantor</span><span class="val">Lukas Bondy</span></div>
+        <div class="terms-row"><span class="lbl">Status</span><span class="val">${
+          fullyExecuted ? '<span style="color:#9FD6A8">✓ Fully executed · ' + fmtDate(inv.signedAt) + '</span>'
+            : readyToSign ? '<span style="color:var(--gold)">Awaiting your signature</span>'
+            : '<span style="color:var(--gold)">Awaiting Lukas\\'s signature</span>'
+        }</span></div>
+      </div>
+    `;
+
+    if (fullyExecuted) {
+      html += `
+        <div class="banner signed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div>
+            <div style="color:white;font-weight:600;margin-bottom:2px">Promissory note signed</div>
+            <div style="color:var(--muted);font-size:13px">Executed ${fmtDate(inv.signedAt)} · A copy was emailed to ${escape(inv.email)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (awaitingLukas) {
+      html += `
+        <div class="banner wait">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div>
+            <div style="color:white;font-weight:600;margin-bottom:2px">Awaiting Lukas's signature</div>
+            <div style="color:var(--muted);font-size:13px">We'll email you the moment Lukas signs and your note is ready to counter-sign.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Document preview + (if applicable) sign form
+    if (readyToSign || fullyExecuted || awaitingLukas) {
+      html += `<div class="card">
+        <h2>${fullyExecuted ? 'Your signed note' : (readyToSign ? 'Review & sign' : 'Your draft note')}</h2>
+        ${previewUrl ? `<p class="lead">${previewFile.name}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
+        ${readyToSign ? `
+          <div class="sig-grid">
+            <div class="field"><label>Printed name (on file)</label><input type="text" value="${escape(inv.name)}" disabled></div>
+            <div class="field"><label>Date</label><input type="text" value="${fmtDate(new Date().toISOString())}" disabled></div>
+          </div>
+          <div class="field"><label>Type your full legal name as signature</label><input type="text" id="typedSig" class="sig" placeholder="${escape(inv.name)}"></div>
+          <label class="agree">
+            <input type="checkbox" id="agreeBox">
+            <span>I have read and agree to be bound by the terms of this Promissory Note. Typing my name above constitutes my legal electronic signature as Creditor under applicable e-sign law (UETA / E-SIGN Act).</span>
+          </label>
+          <button class="sign-btn" id="signBtn" disabled>Sign promissory note</button>
+          <div class="err" id="signErr"></div>
+          <div class="ok" id="signOk"></div>
+        ` : ''}
+      </div>`;
+    }
+
+    // Subscription documents
+    html += `<div class="card">
+      <h2>Subscription documents</h2>
+      <p class="lead">Upload your accreditation letter, ID, wire confirmation, or anything else Kevin requests. Files are saved directly to your Drive folder.</p>
+      <form id="uploadForm">
+        <label class="upload-zone" id="uploadZone" for="uploadInput">
+          <div class="upload-icon">↑</div>
+          <div class="upload-title">Drop files or click to upload</div>
+          <div class="upload-sub">PDF, JPG, PNG · up to 25 MB per file</div>
+        </label>
+        <input type="file" id="uploadInput" name="file" style="display:none">
+      </form>
+      <div class="err" id="upErr"></div>
+      <ul class="doc-list" id="docList"></ul>
+    </div>`;
+
+    $body.innerHTML = html;
+
+    // Wire up sign button
+    if (readyToSign) wireSign(inv);
+    wireUpload(inv);
+    renderDocList(files);
+  }
+
+  function firstName(n){ return (n||'').split(' ')[0]; }
+
+  function wireSign(inv) {
+    const typed = document.getElementById('typedSig');
+    const agree = document.getElementById('agreeBox');
+    const btn = document.getElementById('signBtn');
+    const errEl = document.getElementById('signErr');
+    const okEl = document.getElementById('signOk');
+    function update() {
+      const match = (typed.value || '').trim().toLowerCase() === inv.name.toLowerCase();
+      btn.disabled = !(match && agree.checked);
+    }
+    typed.addEventListener('input', update);
+    agree.addEventListener('change', update);
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Signing…'; errEl.textContent=''; okEl.textContent='';
+      try {
+        const res = await fetch('/api/sign-promissory', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ typedSignature: typed.value.trim(), agreed: true })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          okEl.textContent = '✓ Signed. Refreshing your portal…';
+          setTimeout(load, 800);
+        } else {
+          errEl.textContent = data.message || 'Could not sign.';
+          btn.disabled = false; btn.textContent = 'Sign promissory note';
+        }
+      } catch (err) {
+        errEl.textContent = 'Network error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Sign promissory note';
+      }
+    });
+  }
+
+  function wireUpload(inv) {
+    const zone = document.getElementById('uploadZone');
+    const input = document.getElementById('uploadInput');
+    const errEl = document.getElementById('upErr');
+    input.addEventListener('change', () => doUpload(input.files));
+    ;['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('drag'); }));
+    ;['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('drag'); }));
+    zone.addEventListener('drop', e => { e.preventDefault(); doUpload(e.dataTransfer.files); });
+
+    async function doUpload(files) {
+      errEl.textContent = '';
+      if (!files || !files.length) return;
+      for (const f of files) {
+        const fd = new FormData();
+        fd.append('file', f);
+        try {
+          const res = await fetch('/api/portal-upload', { method:'POST', body: fd });
+          const data = await res.json();
+          if (!data.ok) { errEl.textContent = data.message || 'Upload failed.'; return; }
+        } catch (err) { errEl.textContent = 'Network error.'; return; }
+      }
+      load(); // reload to refresh file list
+    }
+  }
+
+  function renderDocList(files) {
+    const list = document.getElementById('docList');
+    if (!list) return;
+    if (!files.length) { list.innerHTML = '<li style="color:var(--muted);font-style:italic;justify-content:center">No documents yet.</li>'; return; }
+    list.innerHTML = files.map(f => {
+      const ext = fileExt(f.name);
+      const isSigned = f.name === 'signed-promissory-note.pdf';
+      const meta = isSigned ? 'Fully executed · ' + fmtDate(f.createdTime)
+                            : 'Uploaded ' + fmtDate(f.createdTime);
+      return `<li>
+        <span class="doc-tag${isSigned?' signed':''}">${escape(ext||'FILE')}</span>
+        <div class="doc-info">
+          <a class="doc-name" href="${escape(f.url)}" target="_blank" rel="noopener">${escape(f.name)}</a>
+          <div class="doc-meta">${meta}</div>
+        </div>
+      </li>`;
+    }).join('');
+  }
+
+  load();
+</script>
+</body>
+</html>

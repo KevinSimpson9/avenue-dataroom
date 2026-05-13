@@ -4,7 +4,21 @@
     { "source": "/", "destination": "/api/index" },
     { "source": "/index.html", "destination": "/api/index" },
     { "source": "/room", "destination": "/api/room" },
-    { "source": "/room.html", "destination": "/api/room" }
+    { "source": "/room.html", "destination": "/api/room" },
+    { "source": "/portal", "destination": "/api/portal" },
+    { "source": "/portal.html", "destination": "/api/portal" },
+    { "source": "/portal/admin", "destination": "/api/portal-admin" },
+    { "source": "/portal/admin/sign", "destination": "/api/portal-admin-sign" },
+    { "source": "/portal/setup", "destination": "/api/portal-setup" },
+    { "source": "/api/portal/setup", "destination": "/api/portal-setup" },
+    { "source": "/api/portal/me", "destination": "/api/portal-me" },
+    { "source": "/api/portal/roster", "destination": "/api/portal-roster" },
+    { "source": "/api/portal/folder", "destination": "/api/portal-folder" },
+    { "source": "/api/portal/logout", "destination": "/api/portal-logout" },
+    { "source": "/api/portal/forgot", "destination": "/api/portal-forgot" },
+    { "source": "/api/portal/add-investor", "destination": "/api/portal-add-investor" },
+    { "source": "/api/portal/remove-investor", "destination": "/api/portal-remove-investor" },
+    { "source": "/api/portal/resend-link", "destination": "/api/portal-resend-link" }
   ],
   "headers": [
     {

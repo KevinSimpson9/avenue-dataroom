@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choose your password · The Avenue Investor Portal</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold:#D4A24A;--gold-hover:#BC8E3C;--teal-deep:#1F4A52;--teal:#2A6068;
+    --cream:#F5EFE6;--ink:#1A1816;--muted:rgba(255,255,255,0.7);--text:rgba(255,255,255,0.92);
+    --hairline:rgba(255,255,255,0.12);--input-bg:rgba(0,0,0,0.25);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;min-height:100vh;background:linear-gradient(160deg,var(--teal-deep) 0%,#16363c 100%);font-family:'Inter',-apple-system,sans-serif;color:var(--text);line-height:1.55}
+  body{display:flex;align-items:center;justify-content:center;padding:32px 16px}
+  .card{width:100%;max-width:460px;background:rgba(15,38,42,0.55);border:1px solid var(--hairline);border-radius:18px;padding:42px 38px 36px;text-align:center;backdrop-filter:blur(8px)}
+  .brand{font-family:'Cormorant Garamond',serif;font-size:30px;color:white;line-height:1}
+  .brand-sub{font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--gold);margin-top:4px;margin-bottom:24px}
+  .lock-circle{width:56px;height:56px;margin:8px auto 18px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);display:inline-flex;align-items:center;justify-content:center;color:var(--cream)}
+  h1{font-family:'Cormorant Garamond',serif;font-size:26px;color:white;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 22px}
+  .field{text-align:left;margin-bottom:14px}
+  .field label{display:block;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-bottom:6px}
+  .field input{width:100%;padding:13px 14px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:10px;color:var(--text);font-size:15px;font-family:inherit}
+  .field input:focus{outline:none;border-color:var(--gold)}
+  .field input:disabled{opacity:0.7}
+  button.primary{width:100%;background:var(--gold);color:var(--ink);border:none;padding:15px;border-radius:12px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:6px}
+  button.primary:hover:not(:disabled){background:var(--gold-hover);color:white}
+  button.primary:disabled{opacity:0.55;cursor:wait}
+  .err{color:#ff9a9a;font-size:13px;min-height:1.2em;margin-top:10px;text-align:left}
+  .ok{color:#9FD6A8;font-size:13px;margin-top:10px;text-align:left}
+  .footer-note{margin-top:18px;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.55}
+  .footer-note a{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(212,162,74,0.3)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">The Avenue</div>
+    <div class="brand-sub">Investor Portal</div>
+    <div class="lock-circle">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+      </svg>
+    </div>
+    <h1>Choose your password</h1>
+    <p class="sub">After this, sign in with your email + the password you choose.</p>
+
+    <form id="setupForm">
+      <div class="field">
+        <label>Password (10+ characters)</label>
+        <input type="password" name="password" id="pwd" required minlength="10" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm password</label>
+        <input type="password" name="confirmPassword" id="pwd2" required minlength="10" autocomplete="new-password">
+      </div>
+      <button type="submit" class="primary" id="submit">Set password &amp; continue</button>
+      <div class="err" id="err"></div>
+      <div class="ok" id="ok"></div>
+    </form>
+
+    <p class="footer-note">This link is single-use. Once you set your password, sign in going forward at <a href="/">dataroom.theavenuefh.com</a>.</p>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || '';
+    const form = document.getElementById('setupForm');
+    const btn = document.getElementById('submit');
+    const err = document.getElementById('err');
+    const ok = document.getElementById('ok');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = ''; ok.textContent = '';
+      const password = document.getElementById('pwd').value;
+      const confirmPassword = document.getElementById('pwd2').value;
+      if (password !== confirmPassword) { err.textContent = 'Passwords do not match.'; return; }
+      if (password.length < 10) { err.textContent = 'Password must be at least 10 characters.'; return; }
+      btn.disabled = true; btn.textContent = 'Setting…';
+      try {
+        const res = await fetch('/api/portal/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password, confirmPassword })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          ok.textContent = 'Password set. Redirecting…';
+          window.location.href = data.redirect || '/portal';
+        } else {
+          err.textContent = data.message || 'Could not set password.';
+          btn.disabled = false; btn.textContent = 'Set password & continue';
+        }
+      } catch (e2) {
+        err.textContent = 'Network error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Set password & continue';
+      }
+    });
+  </script>
+</body>
+</html>
