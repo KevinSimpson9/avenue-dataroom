@@ -291,7 +291,6 @@
               ? 'Your promissory note is ready for your counter-signature. Review the document below and sign as Creditor.'
               : 'Lukas Bondy is signing the Debtor and Guarantor portions. You\'ll be emailed the moment your note is ready to counter-sign.'
         }</p>
-        <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
       `;
     }
 
@@ -370,6 +369,10 @@
       </form>
       <div class="err" id="upErr"></div>
       <ul class="doc-list" id="docList"></ul>
+    </div>`;
+
+    html += `<div style="text-align:center;margin-top:8px">
+      <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
     </div>`;
 
     $body.innerHTML = html;
