@@ -1148,17 +1148,24 @@
 
         <div class="add-form" id="add-form" style="display:none;">
           <h3>+ Add new investor</h3>
-          <div class="add-grid">
+          <div class="add-grid" style="grid-template-columns: 1.2fr 1.4fr 0.9fr 0.9fr 0.9fr">
             <div class="field"><label>Full legal name</label><input type="text" placeholder="Jane Doe"></div>
             <div class="field"><label>Email</label><input type="email" placeholder="jane@example.com"></div>
             <div class="field"><label>Principal ($)</label><input type="number" placeholder="125000"></div>
-            <div class="field"><label>Code (auto-generated, editable)</label><input type="text" value="JANE-AVE-2026"></div>
+            <div class="field"><label>Rate (%/yr)</label><input type="number" placeholder="20"></div>
+            <div class="field"><label>Term (months)</label><input type="number" placeholder="20"></div>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>Blank promissory note PDF (already customized with their name &amp; amount)</label>
+            <div style="border:1.5px dashed var(--hairline);border-radius:10px;padding:18px;text-align:center;font-size:13px;color:var(--muted)">
+              <div style="color:white;margin-bottom:4px">Drop PDF here or click to upload</div>
+              Lukas will be emailed to sign as soon as this is saved.
+            </div>
           </div>
           <div class="add-form-actions">
             <button class="cancel-btn" onclick="document.getElementById('add-form').style.display='none'">Cancel</button>
-            <button class="add-btn">Create folder & add</button>
+            <button class="add-btn">Create investor &amp; notify Lukas</button>
           </div>
-          <p style="margin-top:14px;color:var(--muted);font-size:12px;font-style:italic">After creating, upload the Lukas-pre-signed blank PDF into the new folder via the drill-down view.</p>
         </div>
       </div>
     </div>
