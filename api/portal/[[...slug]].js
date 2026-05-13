@@ -81,6 +81,7 @@ export default async function handler(req, res) {
       if (route === 'roster') return getRoster(req, res);
       if (route === 'folder') return getFolder(req, res);
       if (route === 'logout') return doLogout(req, res);
+      if (route === 'enter-data-room') return enterDataRoom(req, res);
     }
     if (req.method === 'POST') {
       if (route === 'login') return await postLogin(req, res);
@@ -209,6 +210,22 @@ function getMe(req, res) {
 function doLogout(req, res) {
   clearSessionCookie(res);
   res.writeHead(302, { Location: '/' });
+  return res.end();
+}
+
+// GET /portal/enter-data-room — bridges an authenticated portal session into a
+// data-room session. Committed investors and admins skip the password gate
+// here because they've already authenticated to the portal.
+function enterDataRoom(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
+  const sessionSecret = process.env.SESSION_SECRET || 'change-me';
+  const expires = Date.now() + (1000 * 60 * 60 * 24 * 7);
+  const signature = crypto.createHmac('sha256', sessionSecret).update(String(expires)).digest('base64');
+  const cookieValue = `${expires}.${signature}`;
+  res.setHeader('Set-Cookie',
+    `avenue_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`);
+  res.writeHead(302, { Location: '/room' });
   return res.end();
 }
 
