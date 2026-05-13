@@ -634,6 +634,7 @@
 <div class="mockup-chrome">
   <span class="mockup-chrome-title">Portal mockups</span>
   <button class="tab-btn active" data-view="gate">1. Gate (with Investor Login)</button>
+  <button class="tab-btn" data-view="setup">1a. First-time password setup</button>
   <button class="tab-btn" data-view="portal">2. Investor portal (Zach)</button>
   <button class="tab-btn" data-view="portal-signed">3. Portal — after signing</button>
   <button class="tab-btn" data-view="lukas-queue">4. Lukas admin — sign queue</button>
@@ -675,10 +676,14 @@
 
       <!-- Investor login form (revealed by the top-right corner button) -->
       <div class="investor-form" id="inv-form" style="display:none;">
-        <p class="investor-form-help">Enter the email Kevin has on file for you. We'll send a single-use sign-in link to your inbox (expires in 15 minutes).</p>
-        <input type="email" class="code-input" placeholder="you@example.com" value="zach@example.com" disabled style="font-family:'Inter',sans-serif;letter-spacing:normal">
-        <button class="investor-submit" disabled>Email me a sign-in link</button>
-        <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5">No password to remember. No code to lose. We email a fresh link every time you sign in.</p>
+        <p class="investor-form-help">Sign in to your investor portal.</p>
+        <input type="email" class="code-input" placeholder="you@example.com" value="zach@example.com" disabled style="font-family:'Inter',sans-serif;letter-spacing:normal;margin-bottom:8px">
+        <input type="password" class="code-input" placeholder="Password" value="••••••••••" disabled style="font-family:'Inter',sans-serif;letter-spacing:normal">
+        <button class="investor-submit" disabled style="margin-top:10px">Sign in</button>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:11px">
+          <a href="#" style="color:rgba(255,255,255,0.55);text-decoration:underline">Forgot password?</a>
+          <span style="color:rgba(255,255,255,0.45);font-style:italic">First time? Check your invitation email.</span>
+        </div>
       </div>
 
       <button class="link-btn" disabled>Forgot password?</button>
@@ -688,6 +693,43 @@
       </div>
 
       <div class="gate-footer">Confidential · Accredited Investors Only</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== View 1a: First-time password setup ====== -->
+<div id="view-setup" class="view">
+  <div id="gate">
+    <div class="gate-card">
+      <div class="brand-name">The Avenue</div>
+      <div class="brand-sub">Fountain Hills</div>
+
+      <div class="lock-circle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z"/>
+        </svg>
+      </div>
+
+      <h1 class="gate-title">Welcome, Zach.</h1>
+      <p class="gate-subtitle">Your promissory note is ready to sign. First, set a password for your investor portal.</p>
+
+      <div style="text-align:left;margin-top:8px">
+        <label style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Your email</label>
+        <input type="email" class="password-input" value="zach@example.com" disabled style="padding-left:14px;background:rgba(0,0,0,0.18);margin-bottom:14px">
+
+        <label style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Choose a password</label>
+        <input type="password" class="password-input" placeholder="At least 10 characters" disabled style="padding-left:14px;margin-bottom:14px">
+
+        <label style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.55);display:block;margin-bottom:6px">Confirm password</label>
+        <input type="password" class="password-input" placeholder="Re-enter password" disabled style="padding-left:14px;margin-bottom:18px">
+      </div>
+
+      <button class="unlock-btn" disabled>Set password &amp; continue</button>
+
+      <p style="margin-top:18px;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5">
+        This link is single-use and expires 30 minutes after we sent it.<br>
+        After setup, sign in with your email + password going forward.
+      </p>
     </div>
   </div>
 </div>
