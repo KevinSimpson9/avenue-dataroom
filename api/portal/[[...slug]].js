@@ -201,8 +201,25 @@ function getMe(req, res) {
   if (!session) return res.status(401).json({ ok: false });
   return loadRegistry().then(({ registry }) => {
     const entry = findByEmail(registry, session.email, { includeDeleted: true });
+    // For investors, return their full registry record so the portal page can
+    // render terms, status, and document state without a second round-trip.
+    const investor = entry && entry.role === 'investor' ? {
+      name: entry.name,
+      email: entry.email,
+      principal: entry.principal,
+      rate: entry.rate,
+      termMonths: entry.termMonths,
+      folderId: entry.folderId,
+      blankPdfId: entry.blankPdfId || null,
+      lukasSignedAt: entry.lukasSignedAt || null,
+      lukasSignedPdfId: entry.lukasSignedPdfId || null,
+      signedAt: entry.signedAt || null,
+      signedPdfId: entry.signedPdfId || null,
+      deletedAt: entry.deletedAt || null
+    } : null;
     return res.status(200).json({
-      ok: true, email: session.email, role: session.role, name: entry?.name || ''
+      ok: true, email: session.email, role: session.role,
+      name: entry?.name || '', investor
     });
   }).catch(() => res.status(200).json({ ok: true, email: session.email, role: session.role, name: '' }));
 }

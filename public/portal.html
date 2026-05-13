@@ -108,20 +108,43 @@
   function fmtDate(iso){ if(!iso) return ''; return new Date(iso).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
   function fileExt(name){ const m=(name||'').match(/\.([^.]+)$/); return m ? m[1].toUpperCase() : ''; }
 
-  let state = null; // { investor, files }
+  let state = { investor: null, files: [] };
+
+  function fetchWithTimeout(url, opts = {}, ms = 9000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+  }
 
   async function load() {
+    // Stage 1: render skeleton from /me (fast — only reads registry).
     try {
-      const res = await fetch('/api/portal/folder');
-      if (res.status === 401) { window.location.href = '/'; return; }
-      state = await res.json();
-      if (!state.ok) {
-        $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">' + escape(state.message||'Unable to load portal.') + '</div>';
+      const meRes = await fetchWithTimeout('/api/portal/me', {}, 9000);
+      if (meRes.status === 401) { window.location.href = '/portal/sign-in'; return; }
+      const me = await meRes.json();
+      if (!me.ok || !me.investor) {
+        $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load your portal. <a href="/api/portal/logout" style="color:var(--gold)">Sign out</a> and back in?</div>';
         return;
       }
+      state.investor = me.investor;
       render();
     } catch (err) {
-      $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load portal. Please refresh.</div>';
+      $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load portal. <a href="javascript:location.reload()" style="color:var(--gold)">Try again</a></div>';
+      return;
+    }
+
+    // Stage 2: fetch file list separately so a slow Drive call never blocks the page.
+    try {
+      const folderRes = await fetchWithTimeout('/api/portal/folder', {}, 12000);
+      const data = await folderRes.json();
+      if (data && data.ok) {
+        state.files = data.files || [];
+        // Re-render now that file list is in.
+        render();
+      }
+    } catch (err) {
+      // Non-fatal — file list just stays empty. Page still works for signing.
+      console.warn('folder fetch failed:', err);
     }
   }
 
@@ -130,17 +153,19 @@
     const files = state.files || [];
     $signedAs.innerHTML = '<span class="status-dot"></span>Signed in as ' + escape(inv.name);
 
-    const lukasSignedFile = files.find(f => f.name === 'lukas-signed-promissory-note.pdf');
-    const signedFile = files.find(f => f.name === 'signed-promissory-note.pdf');
-    const blankFile = files.find(f => f.name === 'blank-promissory-note.pdf');
-
     // State machine
     const fullyExecuted = !!inv.signedAt;
     const readyToSign = !fullyExecuted && !!inv.lukasSignedAt;
     const awaitingLukas = !fullyExecuted && !inv.lukasSignedAt;
 
-    const previewFile = signedFile || lukasSignedFile || blankFile || null;
-    const previewUrl = previewFile ? `https://drive.google.com/file/d/${previewFile.id}/preview` : null;
+    // Pick preview file: prefer signedPdfId, then lukasSignedPdfId, then blankPdfId from
+    // /me (always present). Fall back to files-list match if those IDs aren't on the investor.
+    const previewId = inv.signedPdfId || inv.lukasSignedPdfId || inv.blankPdfId
+      || (files.find(f => f.name === 'signed-promissory-note.pdf')?.id)
+      || (files.find(f => f.name === 'lukas-signed-promissory-note.pdf')?.id)
+      || (files.find(f => f.name === 'blank-promissory-note.pdf')?.id)
+      || null;
+    const previewUrl = previewId ? `https://drive.google.com/file/d/${previewId}/preview` : null;
 
     let html = `
       <div class="hero">
@@ -198,7 +223,7 @@
     if (readyToSign || fullyExecuted || awaitingLukas) {
       html += `<div class="card">
         <h2>${fullyExecuted ? 'Your signed note' : (readyToSign ? 'Review & sign' : 'Your draft note')}</h2>
-        ${previewUrl ? `<p class="lead">${previewFile.name}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
+        ${previewUrl ? `<p class="lead">${fullyExecuted ? 'Fully-executed copy' : readyToSign ? 'Lukas-signed, awaiting your signature' : 'Draft (awaiting Lukas\\'s signature)'}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
         ${readyToSign ? `
           <div class="sig-grid">
             <div class="field"><label>Printed name (on file)</label><input type="text" value="${escape(inv.name)}" disabled></div>
