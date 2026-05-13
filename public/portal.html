@@ -359,6 +359,10 @@
       </div>`;
     }
 
+    // Documents awaiting this investor's signature (generic envelopes).
+    // Placeholder div — populated async to keep the initial paint snappy.
+    html += `<div id="envelopesSection"></div>`;
+
     // Subscription documents
     html += `<div class="card">
       <h2>Subscription documents</h2>
@@ -385,6 +389,46 @@
     if (readyToSign) wireSign(inv);
     wireUpload(inv);
     renderDocList(files);
+    loadMyEnvelopes();
+  }
+
+  async function loadMyEnvelopes() {
+    const host = document.getElementById('envelopesSection');
+    if (!host) return;
+    try {
+      const r = await fetchWithTimeout('/api/portal/my-envelopes', {}, 9000);
+      if (!r.ok) return;
+      const d = await r.json();
+      const list = (d && d.envelopes) || [];
+      const pending = list.filter(e => e.canSign && !e.recipientSignedAt);
+      const completed = list.filter(e => e.recipientSignedAt);
+      if (!pending.length && !completed.length) { host.innerHTML = ''; return; }
+      let h = '';
+      if (pending.length) {
+        h += '<div class="card"><h2>Documents awaiting your signature</h2><p class="lead">Click any document below to review and sign.</p><ul class="doc-list" style="margin-top:6px">' + pending.map(e => `
+          <li>
+            <div class="doc-tag">SIGN</div>
+            <div class="doc-info">
+              <a class="doc-name" href="/portal/sign-envelope?id=${encodeURIComponent(e.id)}">${escape(e.title)}</a>
+              <div class="doc-meta">${e.sentAt ? 'Requested ' + fmtDate(e.sentAt) : 'Awaiting your turn'}</div>
+            </div>
+          </li>`).join('') + '</ul></div>';
+      }
+      if (completed.length) {
+        h += '<div class="card"><h2>Documents you\'ve signed</h2><ul class="doc-list" style="margin-top:6px">' + completed.map(e => `
+          <li>
+            <div class="doc-tag signed">✓</div>
+            <div class="doc-info">
+              <a class="doc-name" href="/portal/sign-envelope?id=${encodeURIComponent(e.id)}">${escape(e.title)}</a>
+              <div class="doc-meta">${e.executedAt ? 'Fully executed ' + fmtDate(e.executedAt) : 'You signed ' + fmtDate(e.recipientSignedAt) + ' — awaiting others'}</div>
+            </div>
+          </li>`).join('') + '</ul></div>';
+      }
+      host.innerHTML = h;
+    } catch (err) {
+      // Non-fatal; just leave the section empty.
+      console.warn('my-envelopes load failed:', err);
+    }
   }
 
   function firstName(n){ return (n||'').split(' ')[0]; }

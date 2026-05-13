@@ -150,9 +150,52 @@ export async function sendKevinInvestorSignedNotice({ to, investorName, principa
   });
 }
 
+// ---------- 6. Generic envelope — invite a recipient to sign ----------
+export async function sendEnvelopeInvite({ to, recipientName, envelopeTitle, senderName, token, envelopeId }) {
+  const url = `${baseUrl()}/portal/sign-envelope?id=${encodeURIComponent(envelopeId)}&token=${encodeURIComponent(token)}`;
+  const greeting = recipientName ? `Hello ${String(recipientName).split(' ')[0]},` : 'Hello,';
+  const who = senderName || 'The Avenue';
+  const title = envelopeTitle || 'a document';
+  return send({
+    to,
+    subject: `${who} requested your signature on "${title}"`,
+    html: shell(`
+      <p>${greeting}</p>
+      <p><strong>${escapeHtml(who)}</strong> has requested your signature on <strong>${escapeHtml(title)}</strong>. Click below to review the document and sign.</p>
+      ${ctaButton('Review and sign', url)}
+      <p style="font-size: 13px; color: #666;">This link is single-use. After you sign, it can't be reused.</p>
+    `),
+    text: `${greeting}\n\n${who} has requested your signature on "${title}". Click here to review and sign:\n\n${url}\n\nThis link is single-use.`
+  });
+}
+
+// ---------- 7. Generic envelope — fully executed copy to every recipient ----------
+export async function sendEnvelopeExecutedCopy({ to, envelopeTitle, pdfBytes, pdfFilename, bcc }) {
+  const title = envelopeTitle || 'document';
+  return send({
+    to,
+    bcc,
+    subject: `Fully executed: ${title}`,
+    html: shell(`
+      <p>Hello,</p>
+      <p>Attached is the fully-executed copy of <strong>${escapeHtml(title)}</strong>. All required signatures are now on file.</p>
+      ${ctaButton('Open your portal', `${baseUrl()}/portal`)}
+    `),
+    text: `Attached is the fully-executed copy of "${title}". All required signatures are now on file.\n\nPortal: ${baseUrl()}/portal`,
+    attachments: pdfBytes ? [{
+      filename: pdfFilename || 'executed.pdf',
+      content: Buffer.from(pdfBytes).toString('base64')
+    }] : undefined
+  });
+}
+
 // ---------- Helpers ----------
 function formatMoney(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return '';
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 }
