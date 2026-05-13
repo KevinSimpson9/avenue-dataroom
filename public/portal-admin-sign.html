@@ -70,26 +70,45 @@
   function fmtDate(iso){if(!iso)return '';return new Date(iso).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}
   function firstName(n){return (n||'').split(' ')[0]}
 
+  function fetchWithTimeout(url, opts = {}, ms = 9000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+  }
+
   async function init() {
     const params = new URLSearchParams(window.location.search);
     const email = (params.get('email')||'').toLowerCase().trim();
     if (!email) { document.getElementById('body').innerHTML='<div class="denied">No investor specified.</div>'; return; }
 
-    const meRes = await fetch('/api/portal/me');
-    if (meRes.status === 401) { window.location.href='/'; return; }
-    const me = await meRes.json();
+    let me;
+    try {
+      const meRes = await fetchWithTimeout('/api/portal/me', {}, 9000);
+      if (meRes.status === 401) { window.location.href='/portal/sign-in'; return; }
+      me = await meRes.json();
+    } catch (err) {
+      document.getElementById('body').innerHTML = '<div class="denied">Could not load. <a href="javascript:location.reload()" style="color:var(--gold)">Try again</a></div>';
+      return;
+    }
     document.getElementById('signedAs').innerHTML = '<span class="status-dot"></span>Signed in as ' + escape(me.name||'Admin');
     if (!me.ok || me.role !== 'admin' || (me.email||'').toLowerCase() !== LUKAS_EMAIL) {
       document.getElementById('body').innerHTML = '<div class="denied"><h1 style="font-size:24px">Only Lukas can sign here.</h1><p>If you\\'re Kevin, head back to the <a href="/portal/admin">admin dashboard</a>.</p></div>';
       return;
     }
 
-    const folderRes = await fetch('/api/portal/folder?email=' + encodeURIComponent(email));
-    const data = await folderRes.json();
-    if (!data.ok) { document.getElementById('body').innerHTML = '<div class="denied">' + escape(data.message||'Investor not found.') + '</div>'; return; }
-    const inv = data.investor;
-    const files = data.files || [];
-    const blank = files.find(f => f.name === 'blank-promissory-note.pdf');
+    // Use roster endpoint for fast investor lookup (no Drive folder listing).
+    let inv;
+    try {
+      const rosterRes = await fetchWithTimeout('/api/portal/roster', {}, 9000);
+      const roster = await rosterRes.json();
+      if (!roster.ok) throw new Error(roster.message || 'roster failed');
+      inv = (roster.investors || []).find(i => (i.email||'').toLowerCase() === email);
+      if (!inv) { document.getElementById('body').innerHTML = '<div class="denied">Investor not found: ' + escape(email) + '</div>'; return; }
+    } catch (err) {
+      document.getElementById('body').innerHTML = '<div class="denied">Could not load investor. <a href="javascript:location.reload()" style="color:var(--gold)">Try again</a></div>';
+      return;
+    }
+    const blank = inv.blankPdfId ? { id: inv.blankPdfId, name: 'blank-promissory-note.pdf' } : null;
 
     document.getElementById('bc').innerHTML = `<div class="breadcrumb"><a href="/portal/admin">Roster</a><span style="color:var(--muted);margin:0 8px">/</span><a href="/portal/admin?email=${encodeURIComponent(email)}">${escape(inv.name)}</a><span style="color:var(--muted);margin:0 8px">/</span><span style="color:white">Sign</span></div>`;
 
@@ -152,20 +171,29 @@
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent='Signing…'; errEl.textContent=''; okEl.textContent='';
       try {
-        const res = await fetch('/api/portal/sign-as-lukas', {
+        const res = await fetchWithTimeout('/api/portal/sign-as-lukas', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ email, typedSignature: typed.value.trim(), agreed: true })
-        });
-        const d = await res.json();
+        }, 30000);
+        let d;
+        try { d = await res.json(); }
+        catch (parseErr) {
+          errEl.textContent = 'Server error (HTTP ' + res.status + '). Reload and try again, or contact Kevin@AKCapital.fund.';
+          btn.disabled = false; btn.textContent='Sign as Debtor & Guarantor';
+          return;
+        }
         if (d.ok) {
           okEl.textContent = '✓ Signed. ' + firstName(inv.name) + ' has been emailed to counter-sign.';
-          setTimeout(()=>{ window.location.href='/portal/admin'; }, 1200);
+          setTimeout(()=>{ window.location.href='/portal/admin'; }, 1500);
         } else {
-          errEl.textContent = d.message || 'Could not sign.';
+          errEl.textContent = (d.message || 'Could not sign.') + ' (HTTP ' + res.status + ')';
           btn.disabled = false; btn.textContent='Sign as Debtor & Guarantor';
         }
       } catch (err) {
-        errEl.textContent = 'Network error.';
+        const isAbort = err && err.name === 'AbortError';
+        errEl.textContent = isAbort
+          ? 'Signing took too long. Try again — if it keeps failing, contact Kevin@AKCapital.fund.'
+          : 'Network error: ' + (err && err.message ? err.message : 'unknown');
         btn.disabled = false; btn.textContent='Sign as Debtor & Guarantor';
       }
     });
