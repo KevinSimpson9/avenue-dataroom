@@ -100,6 +100,8 @@
   .doc-meta{color:var(--muted);font-size:12px;margin-top:2px}
 
   .footer-msg{margin-top:18px;font-size:12px;color:rgba(255,255,255,0.55);font-style:italic;text-align:center}
+  .dataroom-footer{display:flex;justify-content:center;margin:8px 0 4px;padding-top:8px}
+  .dataroom-footer .dataroom-btn{min-width:280px;justify-content:center}
   @media (max-width:720px){
     .header{padding:12px 16px;flex-wrap:wrap;gap:8px}
     .brand-tag{display:none}
@@ -110,6 +112,8 @@
     .portal-hero h1{font-size:34px;line-height:1.1}
     .portal-hero p{font-size:14px;margin-bottom:18px}
     .dataroom-btn{width:100%;justify-content:center;font-size:13px;padding:12px 14px}
+    .dataroom-footer{margin:4px 0 2px;padding-top:4px}
+    .dataroom-footer .dataroom-btn{min-width:0;width:100%}
     .card{padding:18px 16px;margin-bottom:18px;border-radius:12px}
     .card h2{font-size:19px}
     .card .lead{font-size:12px}
@@ -371,7 +375,7 @@
       <ul class="doc-list" id="docList"></ul>
     </div>`;
 
-    html += `<div style="text-align:center;margin-top:8px">
+    html += `<div class="dataroom-footer">
       <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
     </div>`;
 
