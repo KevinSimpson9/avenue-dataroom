@@ -254,7 +254,7 @@
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent = 'Signing…'; errEl.textContent=''; okEl.textContent='';
       try {
-        const res = await fetch('/api/sign-promissory', {
+        const res = await fetch('/api/portal/sign', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ typedSignature: typed.value.trim(), agreed: true })
         });
@@ -289,7 +289,7 @@
         const fd = new FormData();
         fd.append('file', f);
         try {
-          const res = await fetch('/api/portal-upload', { method:'POST', body: fd });
+          const res = await fetch('/api/portal/upload', { method:'POST', body: fd });
           const data = await res.json();
           if (!data.ok) { errEl.textContent = data.message || 'Upload failed.'; return; }
         } catch (err) { errEl.textContent = 'Network error.'; return; }

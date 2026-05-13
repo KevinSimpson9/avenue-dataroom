@@ -152,7 +152,7 @@
     btn.addEventListener('click', async () => {
       btn.disabled = true; btn.textContent='Signing…'; errEl.textContent=''; okEl.textContent='';
       try {
-        const res = await fetch('/api/sign-as-lukas', {
+        const res = await fetch('/api/portal/sign-as-lukas', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ email, typedSignature: typed.value.trim(), agreed: true })
         });

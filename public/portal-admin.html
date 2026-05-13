@@ -434,7 +434,7 @@
       for (const f of files) {
         const fd = new FormData(); fd.append('file', f); fd.append('target', email);
         try {
-          const res = await fetch('/api/portal-upload', { method:'POST', body: fd });
+          const res = await fetch('/api/portal/upload', { method:'POST', body: fd });
           const data = await res.json();
           if (!data.ok) { errEl.textContent = data.message || 'Upload failed.'; return; }
         } catch { errEl.textContent = 'Network error.'; return; }
