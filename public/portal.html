@@ -26,13 +26,31 @@
   .signout{color:var(--gold);font-size:13px;text-decoration:none;border-bottom:1px solid rgba(212,162,74,0.3);padding-bottom:1px}
 
   .body{max-width:960px;margin:0 auto;padding:40px 32px 80px}
-  .hero{margin-bottom:32px}
-  .eyebrow{font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;font-weight:500}
-  .hero h1{font-family:'Cormorant Garamond',serif;font-size:40px;line-height:1.1;color:white;margin:0 0 10px;font-weight:600}
-  .hero h1 em{font-family:inherit;color:var(--gold);font-style:normal}
-  .hero p{font-size:15px;color:var(--text);margin:0 0 18px;max-width:680px}
-  .dataroom-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:10px;font-size:14px;font-weight:500;text-decoration:none;transition:background 0.15s,color 0.15s}
-  .dataroom-btn:hover{background:var(--gold);color:var(--ink)}
+
+  /* Full-bleed hero with rendering — matches the data-room banner. */
+  .portal-hero{
+    position:relative;
+    padding:120px 32px 80px;
+    min-height:460px;
+    display:flex;flex-direction:column;justify-content:flex-end;
+    background-image:
+      linear-gradient(to bottom, rgba(15,38,42,0.30) 0%, rgba(15,38,42,0.55) 55%, rgba(31,74,82,0.97) 100%),
+      url('/hero-rendering.jpg');
+    background-size:cover;
+    background-position:center 32%;
+    background-repeat:no-repeat;
+    text-shadow:0 2px 14px rgba(0,0,0,0.4);
+    border-bottom:1px solid var(--hairline);
+  }
+  .portal-hero-inner{max-width:960px;width:100%;margin:0 auto}
+  .portal-hero .eyebrow{color:#E5C385;text-shadow:0 1px 6px rgba(0,0,0,0.5)}
+  .portal-hero h1{font-family:'Cormorant Garamond',serif;font-size:52px;line-height:1.05;color:white;margin:0 0 14px;font-weight:600;letter-spacing:-0.01em}
+  .portal-hero h1 em{font-family:inherit;color:var(--gold);font-style:normal}
+  .portal-hero p{font-size:16px;color:rgba(255,255,255,0.86);margin:0 0 24px;max-width:640px;line-height:1.5}
+
+  .eyebrow{font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;font-weight:500}
+  .dataroom-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;background:rgba(0,0,0,0.30);color:var(--gold);border:1px solid var(--gold);border-radius:10px;font-size:14px;font-weight:500;text-decoration:none;transition:background 0.2s,color 0.2s,transform 0.2s;backdrop-filter:blur(4px)}
+  .dataroom-btn:hover{background:var(--gold);color:var(--ink);transform:translateY(-1px)}
 
   .card{background:var(--bg-soft);border:1px solid var(--hairline);border-radius:14px;padding:26px;margin-bottom:26px}
   .card h2{font-family:'Cormorant Garamond',serif;font-size:22px;color:white;margin:0 0 14px;font-weight:600}
@@ -88,10 +106,10 @@
     .status{font-size:12px;gap:10px;flex-wrap:wrap}
     .status-dot{width:7px;height:7px;margin-right:4px}
     .body{padding:24px 16px 64px;max-width:100%}
-    .hero{margin-bottom:24px}
-    .hero h1{font-size:30px;line-height:1.15}
-    .hero p{font-size:14px}
-    .dataroom-btn{width:100%;justify-content:center;font-size:13px;padding:11px 14px;margin-top:8px}
+    .portal-hero{padding:80px 18px 44px;min-height:360px;background-position:center 38%}
+    .portal-hero h1{font-size:34px;line-height:1.1}
+    .portal-hero p{font-size:14px;margin-bottom:18px}
+    .dataroom-btn{width:100%;justify-content:center;font-size:13px;padding:12px 14px}
     .card{padding:18px 16px;margin-bottom:18px;border-radius:12px}
     .card h2{font-size:19px}
     .card .lead{font-size:12px}
@@ -118,7 +136,8 @@
     .doc-meta{font-size:11px}
   }
   @media (max-width:380px){
-    .hero h1{font-size:26px}
+    .portal-hero{padding:64px 14px 36px;min-height:320px}
+    .portal-hero h1{font-size:28px}
     .body{padding:20px 12px 56px}
     .card{padding:16px 14px}
     .pdf-frame{height:54vh;min-height:300px}
@@ -134,13 +153,33 @@
     </div>
   </div>
 
-  <div class="body" id="body">
-    <div style="text-align:center;color:var(--muted);padding:80px 20px">Loading your portal…</div>
-  </div>
+  <section class="portal-hero">
+    <div class="portal-hero-inner" id="hero">
+      <div class="eyebrow">Promissory Note · The Avenue at Fountain Hills</div>
+      <h1>Welcome.</h1>
+      <p>Loading your portal…</p>
+    </div>
+  </section>
+
+  <div class="body" id="body"></div>
 
 <script>
   const $body = document.getElementById('body');
+  const $hero = document.getElementById('hero');
   const $signedAs = document.getElementById('signed-as');
+
+  function showFatal(msg, detail) {
+    const safe = String(msg || 'Unknown error');
+    const det = detail ? '<pre style="white-space:pre-wrap;font-size:11px;color:rgba(255,255,255,0.5);max-width:600px;margin:14px auto 0;text-align:left;background:rgba(0,0,0,0.25);padding:12px;border-radius:8px;overflow:auto">' + String(detail).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'})[c]) + '</pre>' : '';
+    $body.innerHTML = '<div style="color:#ff9a9a;padding:60px 20px;text-align:center">' + safe + ' <a href="javascript:location.reload()" style="color:var(--gold);margin-left:8px">Reload</a> · <a href="/api/portal/logout" style="color:var(--gold)">Sign out</a>' + det + '</div>';
+  }
+
+  window.addEventListener('error', e => {
+    showFatal('Page error: ' + (e.message || 'unknown'), (e.error && e.error.stack) || e.filename + ':' + e.lineno);
+  });
+  window.addEventListener('unhandledrejection', e => {
+    showFatal('Network or script error', (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason));
+  });
 
   function $(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }
   function escape(s){ return String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c]); }
@@ -156,22 +195,56 @@
     return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
   }
 
-  async function load() {
-    // Stage 1: render skeleton from /me (fast — only reads registry).
+  function normalizeInvestor(raw, fallbackEmail) {
+    const r = raw || {};
+    return {
+      name: r.name || (fallbackEmail ? fallbackEmail.split('@')[0] : 'Investor'),
+      email: r.email || fallbackEmail || '',
+      principal: r.principal || 0,
+      rate: r.rate || '',
+      termMonths: r.termMonths || '',
+      folderId: r.folderId || null,
+      blankPdfId: r.blankPdfId || null,
+      lukasSignedAt: r.lukasSignedAt || null,
+      lukasSignedPdfId: r.lukasSignedPdfId || null,
+      signedAt: r.signedAt || null,
+      signedPdfId: r.signedPdfId || null,
+      deletedAt: r.deletedAt || null
+    };
+  }
+
+  function safeRender(label) {
     try {
-      const meRes = await fetchWithTimeout('/api/portal/me', {}, 9000);
-      if (meRes.status === 401) { window.location.href = '/portal/sign-in'; return; }
-      const me = await meRes.json();
-      if (!me.ok || !me.investor) {
-        $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load your portal. <a href="/api/portal/logout" style="color:var(--gold)">Sign out</a> and back in?</div>';
-        return;
-      }
-      state.investor = me.investor;
       render();
     } catch (err) {
-      $body.innerHTML = '<div style="color:#ff9a9a;padding:80px 20px;text-align:center">Could not load portal. <a href="javascript:location.reload()" style="color:var(--gold)">Try again</a></div>';
-      return;
+      console.error('[portal] render failed at', label, err);
+      showFatal('Render failed (' + label + ').', (err && err.stack) || String(err));
     }
+  }
+
+  async function load() {
+    // Always render the shell first with whatever we have, so the investor
+    // sees their portal even if /me is slow or partial.
+    let meRes, meText, me;
+    try {
+      meRes = await fetchWithTimeout('/api/portal/me', {}, 9000);
+      if (meRes.status === 401) { window.location.href = '/portal/sign-in'; return; }
+      meText = await meRes.text();
+      try { me = JSON.parse(meText); } catch { me = null; }
+    } catch (err) {
+      console.warn('[portal] /me failed:', err);
+    }
+
+    if (me && me.ok && me.investor) {
+      state.investor = normalizeInvestor(me.investor, me.email);
+    } else {
+      // Fall back to a stub so the page still renders. Investor can still
+      // upload docs, sign out, and see the welcome state.
+      const email = (me && me.email) || '';
+      state.investor = normalizeInvestor(null, email);
+      console.warn('[portal] using stub investor — /me returned:', me);
+    }
+    safeRender('initial');
 
     // Stage 2: fetch file list separately so a slow Drive call never blocks the page.
     try {
@@ -180,7 +253,7 @@
       if (data && data.ok) {
         state.files = data.files || [];
         // Re-render now that file list is in.
-        render();
+        safeRender('post-folder');
       }
     } catch (err) {
       // Non-fatal — file list just stays empty. Page still works for signing.
@@ -207,8 +280,8 @@
       || null;
     const previewUrl = previewId ? `https://drive.google.com/file/d/${previewId}/preview` : null;
 
-    let html = `
-      <div class="hero">
+    if ($hero) {
+      $hero.innerHTML = `
         <div class="eyebrow">Promissory Note · The Avenue at Fountain Hills</div>
         <h1>${fullyExecuted ? 'Welcome back, ' : 'Welcome, '}<em>${escape(firstName(inv.name))}</em>.</h1>
         <p>${
@@ -216,11 +289,13 @@
             ? 'Your note is fully executed. Kevin has been notified and will follow up with wire instructions.'
             : readyToSign
               ? 'Your promissory note is ready for your counter-signature. Review the document below and sign as Creditor.'
-              : 'Lukas Bondy is signing the Debtor and Guarantor portions. You\\'ll be emailed the moment your note is ready to counter-sign.'
+              : 'Lukas Bondy is signing the Debtor and Guarantor portions. You\'ll be emailed the moment your note is ready to counter-sign.'
         }</p>
         <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
-      </div>
+      `;
+    }
 
+    let html = `
       <div class="card">
         <h2>Your note at a glance</h2>
         <div class="terms-row"><span class="lbl">Principal</span><span class="val">${fmtMoney(inv.principal)}</span></div>
@@ -230,7 +305,7 @@
         <div class="terms-row"><span class="lbl">Status</span><span class="val">${
           fullyExecuted ? '<span style="color:#9FD6A8">✓ Fully executed · ' + fmtDate(inv.signedAt) + '</span>'
             : readyToSign ? '<span style="color:var(--gold)">Awaiting your signature</span>'
-            : '<span style="color:var(--gold)">Awaiting Lukas\\'s signature</span>'
+            : '<span style="color:var(--gold)">Awaiting Lukas\'s signature</span>'
         }</span></div>
       </div>
     `;
@@ -263,7 +338,7 @@
     if (readyToSign || fullyExecuted || awaitingLukas) {
       html += `<div class="card">
         <h2>${fullyExecuted ? 'Your signed note' : (readyToSign ? 'Review & sign' : 'Your draft note')}</h2>
-        ${previewUrl ? `<p class="lead">${fullyExecuted ? 'Fully-executed copy' : readyToSign ? 'Lukas-signed, awaiting your signature' : 'Draft (awaiting Lukas\\'s signature)'}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
+        ${previewUrl ? `<p class="lead">${fullyExecuted ? 'Fully-executed copy' : readyToSign ? 'Lukas-signed, awaiting your signature' : 'Draft (awaiting Lukas\'s signature)'}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
         ${readyToSign ? `
           <div class="sig-grid">
             <div class="field"><label>Printed name (on file)</label><input type="text" value="${escape(inv.name)}" disabled></div>
