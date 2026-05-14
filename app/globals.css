@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: theme('fontFamily.sans');
+    color: theme('colors.brand.fg');
+    background: theme('colors.brand.bg');
+  }
+  h1, h2, h3 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.01em;
+  }
+}
