@@ -681,7 +681,9 @@
     $('title').addEventListener('input', e => { state.envelope.title = e.target.value; });
     $('enforceOrder').addEventListener('change', e => { state.envelope.enforceOrder = e.target.checked; renderRecipients(); });
 
-    $('saveBtn').addEventListener('click', saveDraft);
+    $('saveBtn').addEventListener('click', () => {
+      saveDraft().catch(err => setStatus('err', err.message));
+    });
     $('sendBtn').addEventListener('click', sendForSignature);
 
     $('aiDetect').addEventListener('click', async () => {
@@ -714,53 +716,83 @@
     });
   }
 
-  async function saveDraft() {
-    setStatus('info', 'Saving…');
+  async function saveDraft({ silent = false } = {}) {
+    if (!silent) setStatus('info', 'Saving…');
     const btn = $('saveBtn'); btn.disabled = true;
     try {
-      const body = {
-        id: state.envelope.id,
-        title: state.envelope.title,
-        enforceOrder: !!state.envelope.enforceOrder,
-        recipients: (state.envelope.recipients || []).map((r, i) => ({
-          email: r.email, name: r.name, role: r.role || '', order: r.order || (i + 1)
-        })),
-        fields: (state.envelope.fields || []).filter(f => f.status === 'confirmed').map(f => ({
-          id: f.id, recipientId: f.recipientId, type: f.type, page: f.page,
-          x: f.x, y: f.y, width: f.width, height: f.height,
-          required: f.required !== false
-        }))
-      };
+      const recipients = (state.envelope.recipients || []).map((r, i) => ({
+        email: (r.email || '').trim(), name: (r.name || '').trim(),
+        role: r.role || '', order: r.order || (i + 1)
+      }));
+      const fields = (state.envelope.fields || []).filter(f => f.status === 'confirmed').map(f => ({
+        id: f.id, recipientId: f.recipientId, type: f.type, page: f.page,
+        x: f.x, y: f.y, width: f.width, height: f.height,
+        required: f.required !== false
+      }));
       const res = await fetch('/api/portal/envelopes/update-fields', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          id: state.envelope.id,
+          title: state.envelope.title,
+          enforceOrder: !!state.envelope.enforceOrder,
+          recipients,
+          fields
+        })
       });
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.message || 'Save failed.');
-      setStatus('ok', 'Draft saved.');
-    } catch (err) {
-      setStatus('err', err.message);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.message || `Save failed (HTTP ${res.status}).`);
+      if (!silent) setStatus('ok', 'Draft saved.');
     } finally {
       btn.disabled = false;
     }
   }
 
+  function validateBeforeSend() {
+    const env = state.envelope || {};
+    const recipients = env.recipients || [];
+    if (!recipients.length) return 'Add at least one recipient before sending.';
+    for (let i = 0; i < recipients.length; i++) {
+      const r = recipients[i];
+      const email = (r.email || '').trim();
+      const name = (r.name || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return `Recipient ${i + 1}: valid email required.`;
+      if (!name) return `Recipient ${i + 1}: name required.`;
+    }
+    const fields = (env.fields || []).filter(f => f.status === 'confirmed');
+    if (!fields.length) return 'Place at least one field on the document before sending.';
+    const assigned = new Set(fields.map(f => f.recipientId));
+    for (const r of recipients) {
+      if (!assigned.has(r.id)) return `Recipient "${r.name || r.email}" has no fields assigned. Place at least one field for them, or remove them.`;
+    }
+    return null;
+  }
+
   async function sendForSignature() {
+    const validationError = validateBeforeSend();
+    if (validationError) { setStatus('err', validationError); return; }
     if (!confirm('Send this envelope to all recipients? They will receive emails with signing links.')) return;
-    setStatus('info', 'Saving and sending…');
+
     const btn = $('sendBtn'); btn.disabled = true;
     try {
-      await saveDraft();
+      setStatus('info', 'Saving…');
+      try {
+        await saveDraft({ silent: true });
+      } catch (err) {
+        setStatus('err', 'Could not save before sending: ' + err.message);
+        return;
+      }
+      setStatus('info', 'Sending invitations…');
       const res = await fetch('/api/portal/envelopes/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: state.envelope.id })
       });
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.message || 'Send failed.');
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.message || `Send failed (HTTP ${res.status}).`);
       setStatus('ok', 'Envelope sent. Redirecting…');
       setTimeout(() => { window.location.href = '/portal/admin/envelopes'; }, 1200);
     } catch (err) {
       setStatus('err', err.message);
+    } finally {
       btn.disabled = false;
     }
   }

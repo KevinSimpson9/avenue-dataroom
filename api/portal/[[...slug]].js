@@ -1249,15 +1249,34 @@ async function postEnvelopeSend(req, res) {
     return res.status(500).json({ ok: false, message: 'Could not update envelope.' });
   }
 
-  // Fire invites async; don't fail the request if email is down.
+  // Await invites so we can surface email failures to the admin. The envelope
+  // is already 'sent' at this point; we report which recipients didn't receive
+  // an email so the admin can resend manually.
+  const inviteResults = [];
   for (const r of recipientsToInvite) {
     if (!r) continue;
-    inviteRecipient(env, r, senderName).catch(err => console.warn('envelope/send: invite failed', err));
+    let result;
+    try { result = await inviteRecipient(env, r, senderName); }
+    catch (err) { result = { sent: false, reason: err.message }; }
+    if (result?.sent) r.invitedAt = env.sentAt;
+    inviteResults.push({ email: r.email, name: r.name, sent: !!result?.sent, reason: result?.reason || null });
+    if (!result?.sent) console.warn('envelope/send: invite failed for', r.email, result?.reason);
   }
-  // Stamp invitedAt eagerly (best-effort; saved on next mutation).
-  for (const r of recipientsToInvite) if (r) r.invitedAt = env.sentAt;
   try { await saveEnvelopes(drive, fileId, envFile); } catch {}
 
+  const failed = inviteResults.filter(x => !x.sent);
+  if (failed.length === inviteResults.length && inviteResults.length > 0) {
+    return res.status(200).json({
+      ok: false,
+      message: `Envelope was marked sent but no invitation emails went out. ${failed[0].reason || 'Email service error.'}`
+    });
+  }
+  if (failed.length > 0) {
+    return res.status(200).json({
+      ok: true,
+      warning: `Some invitations failed: ${failed.map(f => f.email).join(', ')}. Use "Resend invite" from the envelopes list.`
+    });
+  }
   return res.status(200).json({ ok: true });
 }
 
