@@ -66,7 +66,10 @@ import {
   getOrCreateEnvelopesFolder
 } from '../_envelopes-registry.js';
 import { flattenEnvelope, todayLong } from '../_envelope-sign.js';
-import { suggestFields, sha256Hex } from '../_envelope-suggest.js';
+
+function sha256Hex(bytes) {
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
 
 // We handle body parsing ourselves so that multipart endpoints (upload,
 // add-investor) work alongside JSON endpoints in the same function.
@@ -112,7 +115,6 @@ export default async function handler(req, res) {
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
       if (route === 'resend-link') return await postResendLink(req, res);
       if (route === 'envelopes/create') return await postEnvelopeCreate(req, res);
-      if (route === 'envelopes/suggest') return await postEnvelopeSuggest(req, res);
       if (route === 'envelopes/update-fields') return await postEnvelopeUpdate(req, res);
       if (route === 'envelopes/send') return await postEnvelopeSend(req, res);
       if (route === 'envelopes/sign') return await postEnvelopeSign(req, res);
@@ -883,7 +885,6 @@ function serializeEnvelopeFull(env) {
     sourcePdfSha256: env.sourcePdfSha256,
     executedPdfId: env.executedPdfId,
     destinationFolderId: env.destinationFolderId,
-    aiSuggestions: env.aiSuggestions || null,
     recipients: env.recipients || [],
     fields: env.fields || []
   };
@@ -1050,7 +1051,6 @@ async function postEnvelopeCreate(req, res) {
     destinationFolderId: destFolderId,
     enforceOrder,
     ccAdmin,
-    aiSuggestions: null,
     recipients: cleanRecipients.list,
     fields: []
   };
@@ -1089,48 +1089,6 @@ function sanitizeRecipients(rawList) {
   });
   if (out.length === 0 && errors.length === 0) errors.push('At least one recipient is required.');
   return { list: out, errors };
-}
-
-async function postEnvelopeSuggest(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  const body = await readJsonBody(req);
-  const id = String(body?.id || '');
-
-  let envFile, fileId, drive;
-  try { ({ file: envFile, fileId, drive } = await loadEnvelopes()); }
-  catch (err) {
-    console.error('envelope/suggest: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const env = findEnvelope(envFile, id);
-  if (!env) return res.status(404).json({ ok: false, message: 'Envelope not found.' });
-  if (env.status !== 'draft') return res.status(400).json({ ok: false, message: 'Envelope is no longer a draft.' });
-
-  // Cache by sourcePdfSha256: if aiSuggestions already exist, return them.
-  if (env.aiSuggestions && env.aiSuggestions.length) {
-    return res.status(200).json({ ok: true, suggestions: env.aiSuggestions, cached: true });
-  }
-
-  let pdfBytes;
-  try { pdfBytes = await downloadFile(drive, env.sourcePdfId); }
-  catch (err) {
-    console.error('envelope/suggest: pdf download failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not load PDF.' });
-  }
-
-  let suggestions = [];
-  try { suggestions = await suggestFields(pdfBytes); }
-  catch (err) {
-    console.warn('envelope/suggest: AI call failed', err);
-    suggestions = [];
-  }
-
-  env.aiSuggestions = suggestions;
-  try { await saveEnvelopes(drive, fileId, envFile); }
-  catch (err) { console.warn('envelope/suggest: save failed', err); }
-
-  return res.status(200).json({ ok: true, suggestions, cached: false });
 }
 
 async function postEnvelopeUpdate(req, res) {
