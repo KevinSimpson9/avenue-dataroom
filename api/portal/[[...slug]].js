@@ -109,6 +109,7 @@ export default async function handler(req, res) {
       if (route === 'envelopes/send') return await postEnvelopeSend(req, res);
       if (route === 'envelopes/sign') return await postEnvelopeSign(req, res);
       if (route === 'envelopes/void') return await postEnvelopeVoid(req, res);
+      if (route === 'envelopes/delete') return await postEnvelopeDelete(req, res);
       if (route === 'envelopes/resend-invite') return await postEnvelopeResend(req, res);
     }
     return res.status(404).json({ ok: false, message: 'Not found', route });
@@ -1257,6 +1258,45 @@ async function postEnvelopeSign(req, res) {
   }).catch(err => console.warn('envelope/sign: executed email failed', err));
 
   return res.status(200).json({ ok: true, allSigned: true });
+}
+
+// Permanently removes an envelope from the registry and moves its source +
+// executed PDFs to Drive's trash (recoverable for 30 days via Drive UI).
+// Admin-only. Allowed in any state, including executed.
+async function postEnvelopeDelete(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const id = String(body?.id || '');
+  let envFile, fileId, drive;
+  try { ({ file: envFile, fileId, drive } = await loadEnvelopes()); }
+  catch { return res.status(500).json({ ok: false, message: 'Server not configured.' }); }
+  const env = findEnvelope(envFile, id);
+  if (!env) return res.status(404).json({ ok: false, message: 'Envelope not found.' });
+
+  envFile.envelopes = (envFile.envelopes || []).filter(e => e.id !== env.id);
+  try { await saveEnvelopes(drive, fileId, envFile); }
+  catch (err) {
+    console.error('envelope/delete: save failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not delete envelope.' });
+  }
+
+  // Trash the underlying PDFs best-effort. We've already removed the record,
+  // so failure here just leaves orphan PDFs in Drive — surface as a warning.
+  const orphans = [];
+  for (const pdfId of [env.sourcePdfId, env.executedPdfId]) {
+    if (!pdfId) continue;
+    try {
+      await drive.files.update({ fileId: pdfId, requestBody: { trashed: true }, supportsAllDrives: true });
+    } catch (err) {
+      console.warn('envelope/delete: trash failed for', pdfId, err.message);
+      orphans.push(pdfId);
+    }
+  }
+  if (orphans.length) {
+    return res.status(200).json({ ok: true, warning: `Envelope deleted, but ${orphans.length} PDF file(s) could not be moved to Drive trash automatically.` });
+  }
+  return res.status(200).json({ ok: true });
 }
 
 async function postEnvelopeVoid(req, res) {

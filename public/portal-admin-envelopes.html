@@ -150,6 +150,7 @@
     if (env.status === 'sent' || env.status === 'partially-signed') {
       actions.push('<button class="row-btn danger" data-act="void" data-id="' + escapeHtml(env.id) + '">Void</button>');
     }
+    actions.push('<button class="row-btn danger" data-act="delete" data-id="' + escapeHtml(env.id) + '" data-title="' + escapeHtml(env.title) + '">Delete</button>');
     return `
       <tr>
         <td>
@@ -178,6 +179,22 @@
 
   async function handleAction(act, id, btn) {
     if (act === 'open') { window.location.href = '/portal/admin/envelope?id=' + encodeURIComponent(id); return; }
+    if (act === 'delete') {
+      const title = btn && btn.dataset.title ? btn.dataset.title : 'this envelope';
+      if (!confirm(`Permanently delete "${title}"?\n\nThis removes the envelope record and moves its source/executed PDFs to Drive trash. Drive keeps trashed files recoverable for 30 days. This cannot be undone from the portal.`)) return;
+      if (btn) btn.disabled = true;
+      try {
+        const r = await fetch('/api/portal/envelopes/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+        const d = await r.json();
+        if (!d.ok) { alert(d.message || 'Could not delete.'); if (btn) btn.disabled = false; return; }
+        if (d.warning) alert(d.warning);
+        load();
+      } catch (err) {
+        alert('Network error: ' + err.message);
+        if (btn) btn.disabled = false;
+      }
+      return;
+    }
     if (act === 'void') {
       if (!confirm('Void this envelope? Signers will no longer be able to use their links.')) return;
       if (btn) btn.disabled = true;
