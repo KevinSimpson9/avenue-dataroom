@@ -774,11 +774,9 @@ async function authorizeEnvelopeView(req, envelopeId, providedToken) {
   if (!env) return null;
 
   const session = verifyPortalSession(req);
-  if (session && session.role === 'admin') {
-    return { kind: 'admin', env, file, fileId, drive, session };
-  }
 
-  // Token-based access via magic link.
+  // Check recipient access first so a user who is BOTH an admin and a recipient
+  // on this envelope can actually sign. (Admin-only access falls through below.)
   if (providedToken) {
     const decoded = verifyToken(providedToken);
     if (decoded && decoded.purpose === 'sign-envelope' && typeof decoded.nonce === 'string') {
@@ -790,10 +788,13 @@ async function authorizeEnvelopeView(req, envelopeId, providedToken) {
     }
   }
 
-  // Session-based investor access — recipient identified by email.
-  if (session && session.role === 'investor') {
+  if (session) {
     const r = (env.recipients || []).find(x => normalizeEmail(x.email) === normalizeEmail(session.email));
     if (r) return { kind: 'recipient', env, file, fileId, drive, session, recipient: r };
+  }
+
+  if (session && session.role === 'admin') {
+    return { kind: 'admin', env, file, fileId, drive, session };
   }
 
   return null;
@@ -1331,7 +1332,10 @@ async function postEnvelopeSign(req, res) {
     }
     const v = (submittedById.get(f.id) || '').trim();
     if (!v) {
-      if (f.required !== false) return res.status(400).json({ ok: false, message: `Please fill all required fields before signing.` });
+      if (f.required !== false) {
+        const label = f.type === 'signature' ? 'signature' : f.type === 'initials' ? 'initials' : f.type === 'text' ? 'text field' : f.type;
+        return res.status(400).json({ ok: false, message: `Please fill in the required ${label} on page ${f.page} before signing.` });
+      }
       continue;
     }
     f.filledValue = v.slice(0, 200);
