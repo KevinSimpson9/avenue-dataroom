@@ -877,6 +877,7 @@ function serializeEnvelopeFull(env) {
     sentAt: env.sentAt,
     executedAt: env.executedAt,
     enforceOrder: !!env.enforceOrder,
+    ccAdmin: env.ccAdmin !== false,
     sourcePdfId: env.sourcePdfId,
     sourcePdfName: env.sourcePdfName,
     sourcePdfSha256: env.sourcePdfSha256,
@@ -983,6 +984,9 @@ async function postEnvelopeCreate(req, res) {
   }
   const title = String(firstVal(fields.title) || '').trim() || 'Untitled envelope';
   const enforceOrder = String(firstVal(fields.enforceOrder) || '') === 'true';
+  // ccAdmin defaults to true if not supplied — admins almost always want a copy.
+  const ccAdminRaw = firstVal(fields.ccAdmin);
+  const ccAdmin = ccAdminRaw == null ? true : String(ccAdminRaw) !== 'false';
   let recipients = [];
   try {
     const raw = JSON.parse(String(firstVal(fields.recipients) || '[]'));
@@ -1045,6 +1049,7 @@ async function postEnvelopeCreate(req, res) {
     executedPdfId: null,
     destinationFolderId: destFolderId,
     enforceOrder,
+    ccAdmin,
     aiSuggestions: null,
     recipients: cleanRecipients.list,
     fields: []
@@ -1143,6 +1148,7 @@ async function postEnvelopeUpdate(req, res) {
 
   if (typeof body.title === 'string' && body.title.trim()) env.title = body.title.trim().slice(0, 200);
   if (typeof body.enforceOrder === 'boolean') env.enforceOrder = body.enforceOrder;
+  if (typeof body.ccAdmin === 'boolean') env.ccAdmin = body.ccAdmin;
 
   if (Array.isArray(body.recipients)) {
     // Update recipients in-place: preserve ids/nonces for ones with same email,
@@ -1301,13 +1307,19 @@ async function inviteRecipient(env, recipient, senderName) {
     purpose: 'sign-envelope',
     nonce: `${env.id}:${recipient.signNonce}`
   });
+  // BCC the admin (Kevin) on every invite if the envelope opts in. Skip the
+  // BCC if the recipient IS Kevin to avoid sending the same person two copies.
+  const bcc = env.ccAdmin !== false && normalizeEmail(recipient.email) !== normalizeEmail(KEVIN_EMAIL)
+    ? KEVIN_EMAIL
+    : undefined;
   return sendEnvelopeInvite({
     to: recipient.email,
     recipientName: recipient.name,
     envelopeTitle: env.title,
     senderName,
     token,
-    envelopeId: env.id
+    envelopeId: env.id,
+    bcc
   });
 }
 

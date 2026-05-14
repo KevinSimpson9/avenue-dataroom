@@ -151,13 +151,14 @@ export async function sendKevinInvestorSignedNotice({ to, investorName, principa
 }
 
 // ---------- 6. Generic envelope — invite a recipient to sign ----------
-export async function sendEnvelopeInvite({ to, recipientName, envelopeTitle, senderName, token, envelopeId }) {
+export async function sendEnvelopeInvite({ to, recipientName, envelopeTitle, senderName, token, envelopeId, bcc }) {
   const url = `${baseUrl()}/portal/sign-envelope?id=${encodeURIComponent(envelopeId)}&token=${encodeURIComponent(token)}`;
   const greeting = recipientName ? `Hello ${String(recipientName).split(' ')[0]},` : 'Hello,';
   const who = senderName || 'The Avenue';
   const title = envelopeTitle || 'a document';
   return send({
     to,
+    bcc,
     subject: `${who} requested your signature on "${title}"`,
     html: shell(`
       <p>${greeting}</p>

@@ -149,6 +149,10 @@
             <input type="checkbox" id="initEnforceOrder">
             Enforce signing order (each recipient is invited only after the previous one signs)
           </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+            <input type="checkbox" id="initCcAdmin" checked>
+            CC Kevin (admin) on every signing invitation and the executed copy
+          </label>
 
           <label style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-top:6px">PDF</label>
           <label class="upload-zone" for="initPdfInput" id="initPdfZone" style="margin:0">
@@ -169,6 +173,7 @@
     <div class="topbar">
       <input type="text" id="title" placeholder="Envelope title">
       <label class="toggle"><input type="checkbox" id="enforceOrder"> Enforce signing order</label>
+      <label class="toggle"><input type="checkbox" id="ccAdmin" checked> CC Kevin (admin) on invitations</label>
       <button class="btn" id="saveBtn">Save draft</button>
       <button class="btn primary" id="sendBtn">Send for signature</button>
     </div>
@@ -315,6 +320,7 @@
         const fd = new FormData();
         fd.append('title', title);
         fd.append('enforceOrder', $('initEnforceOrder').checked ? 'true' : 'false');
+        fd.append('ccAdmin', $('initCcAdmin').checked ? 'true' : 'false');
         fd.append('recipients', JSON.stringify(cleanR.map((r, i) => ({ name: r.name, email: r.email, role: r.role, order: i + 1 }))));
         fd.append('pdf', pdfFile);
         const res = await fetch('/api/portal/envelopes/create', { method: 'POST', body: fd });
@@ -350,10 +356,11 @@
       $('bcLast').textContent = state.envelope.title || 'Envelope';
       $('title').value = state.envelope.title || '';
       $('enforceOrder').checked = !!state.envelope.enforceOrder;
+      $('ccAdmin').checked = state.envelope.ccAdmin !== false;
       // If envelope is already sent/executed, lock the UI.
       if (state.envelope.status !== 'draft') {
         $('saveBtn').disabled = true; $('sendBtn').disabled = true;
-        $('title').disabled = true; $('enforceOrder').disabled = true;
+        $('title').disabled = true; $('enforceOrder').disabled = true; $('ccAdmin').disabled = true;
         setStatus('info', 'This envelope is ' + state.envelope.status + ' and can no longer be edited.');
       }
       renderRecipients();
@@ -680,6 +687,7 @@
 
     $('title').addEventListener('input', e => { state.envelope.title = e.target.value; });
     $('enforceOrder').addEventListener('change', e => { state.envelope.enforceOrder = e.target.checked; renderRecipients(); });
+    $('ccAdmin').addEventListener('change', e => { state.envelope.ccAdmin = e.target.checked; });
 
     $('saveBtn').addEventListener('click', () => {
       saveDraft().catch(err => setStatus('err', err.message));
@@ -735,6 +743,7 @@
           id: state.envelope.id,
           title: state.envelope.title,
           enforceOrder: !!state.envelope.enforceOrder,
+          ccAdmin: state.envelope.ccAdmin !== false,
           recipients,
           fields
         })
