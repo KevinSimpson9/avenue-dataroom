@@ -98,7 +98,26 @@
   .status-msg.ok{background:rgba(159,214,168,0.10);border:1px solid rgba(159,214,168,0.35);color:#9FD6A8}
   .status-msg.info{background:rgba(212,162,74,0.10);border:1px solid rgba(212,162,74,0.4);color:var(--cream)}
 
+  .palette button:disabled{opacity:.4;cursor:not-allowed}
+  .palette button:disabled:hover{border-color:var(--hairline);color:var(--text)}
+  .palette-disabled-hint{font-size:11px;color:#ff9a9a;margin:-2px 0 8px;font-style:italic}
+
   @media (max-width:980px){.wrap{grid-template-columns:1fr}.sidebar{border-left:0;border-top:1px solid var(--hairline);max-height:none}}
+  @media (max-width:720px){
+    .header{padding:14px 16px}
+    .brand{font-size:18px}
+    .brand-tag{display:none}
+    .breadcrumb{padding:12px 14px}
+    .topbar{padding:12px 14px;flex-direction:column;align-items:stretch}
+    .topbar input[type=text]{width:100%}
+    .topbar .btn{width:100%}
+    .viewer{padding:16px 12px}
+    .sidebar{padding:16px 14px}
+    .add-recipient{grid-template-columns:1fr}
+    #initial #intake{margin:24px auto;padding:0 14px}
+    .upload-zone{padding:28px 16px;margin:14px 0}
+    .palette{grid-template-columns:1fr 1fr}
+  }
 </style>
 </head>
 <body>
@@ -169,12 +188,13 @@
 
         <h3>Field palette</h3>
         <p class="hint">Click a type, then click on the page to place. Drag the corner to resize.</p>
-        <div class="palette">
+        <div class="palette" id="palette">
           <button data-type="signature"><span class="icon">✍</span>Signature</button>
           <button data-type="initials"><span class="icon">A.B.</span>Initials</button>
           <button data-type="date"><span class="icon">📅</span>Date</button>
           <button data-type="text"><span class="icon">Aa</span>Text</button>
         </div>
+        <div class="palette-disabled-hint" id="paletteHint" style="display:none">Add a recipient below before placing fields.</div>
 
         <h3>Recipients <span style="font-size:11px;color:var(--muted);font-weight:400">(who signs what)</span></h3>
         <div id="recipientsList"></div>
@@ -259,11 +279,21 @@
     ['dragover','dragenter'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag'); }));
     ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); }));
     dropZone.addEventListener('drop', e => {
-      const f = e.dataTransfer.files[0];
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length > 1) {
+        const errEl = $('initErr');
+        errEl.textContent = 'Only one PDF per envelope. Using the first file.';
+        errEl.style.display = 'block';
+      }
+      const f = files[0];
       if (f && f.type === 'application/pdf') {
         pdfFile = f;
         dropZone.classList.add('drag');
         dropZone.firstElementChild.textContent = '✓ ' + f.name;
+      } else if (f) {
+        const errEl = $('initErr');
+        errEl.textContent = 'That file isn\'t a PDF.';
+        errEl.style.display = 'block';
       }
     });
 
@@ -274,6 +304,9 @@
       if (!title) { errEl.textContent = 'Title is required.'; errEl.style.display = 'block'; return; }
       const cleanR = recipients.filter(r => r.email && r.name);
       if (!cleanR.length) { errEl.textContent = 'Add at least one recipient (name + email).'; errEl.style.display = 'block'; return; }
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const badEmail = cleanR.find(r => !emailRe.test(r.email.trim()));
+      if (badEmail) { errEl.textContent = 'Invalid email format: ' + badEmail.email; errEl.style.display = 'block'; return; }
       if (!pdfFile) { errEl.textContent = 'Please upload a PDF.'; errEl.style.display = 'block'; return; }
 
       const btn = $('initCreate');
@@ -377,6 +410,11 @@
     if (e.target !== wrap.querySelector('canvas')) return;
     if (state.envelope.status !== 'draft') return;
     if (!state.pendingType) return;
+    if (!(state.envelope.recipients || []).length) {
+      setStatus('err', 'Add a recipient before placing fields.');
+      setPendingType(null);
+      return;
+    }
     const rect = wrap.getBoundingClientRect();
     const xCanvas = e.clientX - rect.left;
     const yCanvas = e.clientY - rect.top;
@@ -516,6 +554,7 @@
   function renderRecipients() {
     const el = $('recipientsList');
     const list = state.envelope.recipients || [];
+    updatePaletteGate();
     if (!list.length) { el.innerHTML = '<div class="empty">No recipients yet.</div>'; return; }
     el.innerHTML = list.map((r, idx) => `
       <div class="recipient-row" data-rid="${escapeHtml(r.id)}">
@@ -607,6 +646,15 @@
     document.body.style.cursor = t ? 'crosshair' : '';
   }
 
+  function updatePaletteGate() {
+    const hasRecipients = (state.envelope.recipients || []).length > 0;
+    const isDraft = state.envelope.status === 'draft';
+    document.querySelectorAll('.palette button').forEach(b => { b.disabled = !hasRecipients || !isDraft; });
+    const hint = $('paletteHint');
+    if (hint) hint.style.display = (!hasRecipients && isDraft) ? 'block' : 'none';
+    if (!hasRecipients || !isDraft) setPendingType(null);
+  }
+
   function bindGlobalEvents() {
     document.querySelectorAll('.palette button').forEach(b => {
       b.addEventListener('click', () => {
@@ -659,10 +707,10 @@
     });
 
     $('aiClear').addEventListener('click', () => {
-      state.envelope.aiSuggestions = (state.envelope.aiSuggestions || []).filter(s => false);
-      // Also drop any not-yet-confirmed fields that came from suggestions.
+      state.envelope.aiSuggestions = [];
       state.envelope.fields = (state.envelope.fields || []).filter(f => f.status === 'confirmed');
       renderChips(); renderFields();
+      setStatus('ok', 'Suggestions cleared.');
     });
   }
 
