@@ -37,26 +37,32 @@
   .add-btn{background:var(--gold);color:var(--ink);border:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
   .add-btn:hover{background:var(--gold-hover);color:white}
 
-  table.roster{width:100%;border-collapse:collapse;font-size:13px}
-  table.roster th{text-align:left;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);padding:8px 12px;border-bottom:1px solid var(--hairline);font-weight:500}
-  table.roster td{padding:14px 12px;border-bottom:1px solid rgba(255,255,255,0.06);color:var(--text);vertical-align:middle}
+  table.roster{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+  table.roster th{text-align:left;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--hairline);font-weight:500}
+  table.roster th.col-actions{text-align:right}
+  table.roster td{padding:16px 12px;border-bottom:1px solid rgba(255,255,255,0.06);color:var(--text);vertical-align:middle}
+  table.roster td.principal-cell{font-variant-numeric:tabular-nums;color:white}
   table.roster tr:last-child td{border-bottom:0}
   table.roster tr:hover{background:rgba(255,255,255,0.03)}
-  .name-cell{display:flex;align-items:center;gap:10px}
-  .avatar{width:32px;height:32px;border-radius:50%;background:rgba(212,162,74,0.16);color:var(--gold);border:1px solid rgba(212,162,74,0.35);display:inline-flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:12px;font-weight:600;flex-shrink:0}
-  .investor-name{color:white;font-weight:500}
-  .investor-sub{color:var(--muted);font-size:12px}
-  .badge{padding:3px 8px;border-radius:6px;font-size:11px;font-weight:500;display:inline-block}
+  .name-cell{display:flex;align-items:center;gap:12px;min-width:0}
+  .name-text{min-width:0;overflow:hidden}
+  .avatar{width:36px;height:36px;border-radius:50%;background:rgba(212,162,74,0.16);color:var(--gold);border:1px solid rgba(212,162,74,0.35);display:inline-flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:600;flex-shrink:0}
+  .investor-name{color:white;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .investor-sub{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:500;display:inline-block;white-space:nowrap;line-height:1.2}
   .badge.signed{background:rgba(159,214,168,0.14);color:#9FD6A8}
   .badge.pending-lukas{background:rgba(212,162,74,0.16);color:var(--gold)}
   .badge.pending-investor{background:rgba(255,215,138,0.12);color:#F0C56F}
   .badge.removed{background:rgba(255,154,154,0.10);color:#ff9a9a}
-  .actions-cell{display:flex;gap:6px;flex-wrap:wrap}
-  .row-btn{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+  .actions-cell{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:nowrap}
+  .row-btn{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:7px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;line-height:1;transition:border-color .15s ease,color .15s ease,background .15s ease}
   .row-btn:hover{border-color:var(--gold);color:var(--gold)}
-  .row-btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
-  .row-btn.primary:hover{background:var(--gold-hover);color:white}
-  .row-btn.danger:hover{border-color:#ff9a9a;color:#ff9a9a}
+  .row-btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:600}
+  .row-btn.primary:hover{background:var(--gold-hover);color:white;border-color:var(--gold-hover)}
+  .row-btn.icon{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+  .row-btn.icon svg{width:15px;height:15px;display:block}
+  .row-btn.danger:hover{border-color:#ff9a9a;color:#ff9a9a;background:rgba(255,154,154,0.06)}
+  .row-btn:disabled,.add-btn:disabled,.cancel-btn:disabled{opacity:.45;cursor:wait}
 
   .add-form{background:rgba(0,0,0,0.22);border:1px dashed var(--gold);border-radius:12px;padding:22px;margin-top:14px;display:none}
   .add-form.open{display:block}
@@ -93,24 +99,169 @@
   .doc-name:hover{text-decoration:underline}
   .doc-meta{color:var(--muted);font-size:12px;margin-top:2px}
 
-  .empty{color:var(--muted);font-style:italic;text-align:center;padding:24px}
+  .empty{color:var(--muted);text-align:center;padding:36px 20px;background:rgba(0,0,0,0.12);border:1px dashed var(--hairline);border-radius:12px}
+  .empty-title{font-family:'Cormorant Garamond',serif;color:white;font-size:18px;margin-bottom:4px}
+  .empty-sub{font-size:13px}
+  .loader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 20px;color:var(--muted)}
+  .loader-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);animation:pulseDot 1.2s ease-in-out infinite}
+  @keyframes pulseDot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
 
   .dataroom-link{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-size:12px;font-weight:500;text-decoration:none;margin-right:14px}
   .dataroom-link:hover{background:rgba(218,165,32,0.08)}
 
+  /* Walkthrough trigger + modal */
+  .head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .walkthrough-trigger{background:transparent;border:1px solid var(--hairline);color:var(--muted);padding:9px 14px;border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer;letter-spacing:0.02em;transition:border-color .15s ease,color .15s ease,background .15s ease}
+  .walkthrough-trigger:hover{border-color:var(--gold);color:var(--gold);background:rgba(212,162,74,0.05)}
+  .wt-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;padding:24px;z-index:1000;animation:wtFade .18s ease-out}
+  @keyframes wtFade{from{opacity:0}to{opacity:1}}
+  .wt-modal{background:var(--teal-deep);border:1px solid var(--hairline);border-radius:16px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.45);overflow:hidden}
+  .wt-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--hairline)}
+  .wt-dots{display:flex;gap:6px;flex-wrap:wrap}
+  .wt-dot{width:20px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);transition:background .2s ease;cursor:pointer;border:0;padding:0}
+  .wt-dot.is-active{background:var(--gold)}
+  .wt-dot.is-done{background:rgba(212,162,74,0.45)}
+  .wt-meta{display:flex;align-items:center;gap:14px}
+  .wt-counter{font-size:11px;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase}
+  .wt-close{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:22px;line-height:1;padding:4px 8px;border-radius:6px;font-family:inherit}
+  .wt-close:hover{color:white;background:rgba(255,255,255,0.06)}
+  .wt-body{padding:24px 26px;overflow-y:auto;flex:1}
+  .wt-step{display:none}
+  .wt-step.is-active{display:block;animation:wtSlide .25s ease-out}
+  @keyframes wtSlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .wt-title{font-family:'Cormorant Garamond',serif;font-size:24px;color:white;margin:0 0 6px;font-weight:600}
+  .wt-narr{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.55}
+  .wt-narr strong{color:var(--text);font-weight:500}
+  .wt-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-top:1px solid var(--hairline);background:rgba(0,0,0,0.18)}
+  .wt-btn{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:8px 16px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+  .wt-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+  .wt-btn:disabled{opacity:.35;cursor:not-allowed}
+  .wt-btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:600}
+  .wt-btn.primary:hover:not(:disabled){background:var(--gold-hover);color:white;border-color:var(--gold-hover)}
+  .wt-btn.is-danger{background:#c45757;border-color:#c45757;color:white}
+  .wt-btn.is-danger:hover:not(:disabled){background:#b14848;border-color:#b14848;color:white}
+  .wt-mock{background:rgba(0,0,0,0.22);border:1px solid var(--hairline);border-radius:10px;padding:16px;font-size:13px}
+  .wt-mock + .wt-mock{margin-top:10px}
+  .wt-mock-label{font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .wt-mock-form .wt-field{margin-bottom:10px}
+  .wt-mock-form .wt-field-label{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .wt-mock-form .wt-field-val{background:rgba(0,0,0,0.3);border:1px solid var(--hairline);border-radius:6px;padding:7px 10px;color:white;font-size:12px}
+  .wt-mock-form .wt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .wt-mock-form .wt-drop{margin-top:6px;border:1.5px dashed var(--gold);border-radius:8px;padding:14px;text-align:center;font-size:12px;color:var(--gold);background:rgba(212,162,74,0.06)}
+  .wt-em-from{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .wt-em-from strong{color:white;font-weight:500}
+  .wt-em-subj{color:white;font-weight:600;font-size:14px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)}
+  .wt-em-body{color:var(--text);font-size:13px;line-height:1.55;margin-bottom:14px}
+  .wt-em-body strong{color:white;font-weight:600}
+  .wt-em-cta{display:inline-block;background:var(--gold);color:var(--ink);padding:8px 14px;border-radius:7px;font-size:12px;font-weight:600}
+  .wt-em-attach{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid var(--hairline);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);margin-top:6px}
+  .wt-em-tag{background:rgba(159,214,168,0.16);color:#9FD6A8;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:0.06em}
+  .wt-pdf{background:rgba(0,0,0,0.4);border:1px solid var(--hairline);border-radius:8px;height:110px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:12px}
+  .wt-sign-btn{display:inline-block;background:var(--gold);color:var(--ink);padding:8px 14px;border-radius:7px;font-size:12px;font-weight:600}
+  .wt-mock-badges{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .wt-arrow{color:var(--gold);font-size:14px}
+  .wt-doc{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.22);border:1px solid var(--hairline);border-radius:8px;padding:10px 12px;font-size:12px}
+  .wt-doc + .wt-doc{margin-top:6px}
+  .wt-doc-tag{width:30px;height:30px;background:rgba(212,162,74,0.16);color:var(--gold);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;flex-shrink:0}
+  .wt-doc-name{color:white;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wt-sign-row{margin-top:12px;display:flex;justify-content:flex-end}
+
+  /* Toast + confirm dialog */
+  body.modal-lock{overflow:hidden}
+  .toast-stack{position:fixed;bottom:24px;right:24px;z-index:1100;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:calc(100vw - 48px)}
+  .toast{background:var(--teal-deep);border:1px solid var(--hairline);border-radius:10px;padding:12px 16px;color:var(--text);font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,0.35);animation:toastIn .2s ease-out;pointer-events:auto;max-width:360px;line-height:1.45}
+  .toast.is-out{animation:toastOut .3s forwards}
+  .toast.toast-success{border-color:rgba(159,214,168,0.4);color:#9FD6A8}
+  .toast.toast-error{border-color:rgba(255,154,154,0.45);color:#ff9a9a}
+  @keyframes toastIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes toastOut{to{transform:translateY(10px);opacity:0}}
+  .confirm-modal{background:var(--teal-deep);border:1px solid var(--hairline);border-radius:14px;max-width:440px;width:100%;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,0.45)}
+  .confirm-modal h3{font-family:'Cormorant Garamond',serif;font-size:22px;color:white;margin:0 0 8px;font-weight:600}
+  .confirm-modal p{color:var(--muted);font-size:14px;margin:0 0 22px;line-height:1.55}
+  .confirm-actions{display:flex;gap:8px;justify-content:flex-end}
+  .upload-zone.is-busy{border-style:solid;border-color:var(--gold);background:rgba(212,162,74,0.08);cursor:wait}
+
   @media (max-width:880px){.summary{grid-template-columns:1fr 1fr}.add-grid{grid-template-columns:1fr 1fr}.brand-tag{display:none}.body{padding:24px 18px 60px}.header{padding:14px 18px}}
-  @media (max-width:600px){
-    .summary{grid-template-columns:1fr}
-    .add-grid{grid-template-columns:1fr}
-    table.roster{font-size:11px}
-    table.roster th,table.roster td{padding:8px 6px}
-    .header{flex-wrap:wrap;gap:10px;padding:12px 16px}
+
+  /* Phone / small tablet: roster collapses from a table into card-per-investor */
+  @media (max-width:720px){
+    .body{padding:22px 14px 60px}
+    h1{font-size:26px}
+    .h1-sub{margin-bottom:20px}
+
+    .summary{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+    .summary-cell{padding:14px}
+    .summary-cell .lbl{font-size:10px;margin-bottom:4px}
+    .summary-cell .val{font-size:22px}
+
+    .card{padding:16px 14px;border-radius:12px;margin-bottom:18px}
+    .card-head{flex-direction:column;align-items:stretch;gap:12px;margin-bottom:14px}
+    .card-head h2{font-size:20px}
+    .head-actions{width:100%;display:flex;gap:8px;justify-content:stretch}
+    .walkthrough-trigger{flex:1;padding:11px 12px;font-size:13px;text-align:center;color:var(--gold);border-color:rgba(212,162,74,0.45);background:rgba(212,162,74,0.06)}
+    .add-btn{flex:1;padding:11px 14px;font-size:13px}
+
+    table.roster{display:block;font-size:13px}
+    table.roster colgroup,table.roster thead{display:none}
+    table.roster tbody{display:block}
+    table.roster tr{display:block;background:rgba(0,0,0,0.22);border:1px solid var(--hairline);border-radius:12px;padding:14px;margin-bottom:10px}
+    table.roster tr:hover{background:rgba(0,0,0,0.22)}
+    table.roster tr:last-child{margin-bottom:0}
+    table.roster td{display:block;border-bottom:0;padding:0;width:auto}
+    table.roster td:nth-child(1){margin-bottom:14px}
+    table.roster td.principal-cell{display:inline-block;font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);line-height:1;margin-right:14px;vertical-align:middle}
+    table.roster td:nth-child(3){display:inline-block;vertical-align:middle}
+    table.roster td:nth-child(4){margin-top:14px}
+
+    .actions-cell{justify-content:flex-start;gap:8px;flex-wrap:wrap}
+    .row-btn{padding:10px 14px;font-size:13px;border-radius:8px}
+    .row-btn.primary{flex:1;text-align:center;min-width:140px}
+    .row-btn.icon{width:40px;height:40px;flex:0 0 auto;padding:0}
+    .row-btn.icon svg{width:16px;height:16px}
+
+    .name-cell{gap:10px}
+    .avatar{width:38px;height:38px;font-size:13px}
+    .investor-name{font-size:14px}
+    .investor-sub{font-size:12px}
+
+    .add-grid{grid-template-columns:1fr;gap:8px}
+    .add-form{padding:16px;margin-top:12px}
+    .add-form h3{font-size:16px;margin-bottom:12px}
+    .file-zone{padding:14px;font-size:12px}
+    .add-actions{flex-direction:column-reverse;gap:8px}
+    .add-actions button{width:100%;padding:12px}
+
+    .header{flex-wrap:wrap;gap:10px;padding:12px 14px}
     .brand{font-size:18px;flex:1;min-width:0}
     .admin-pill{padding:3px 7px;font-size:10px;margin-left:6px}
     .status{order:3;width:100%;justify-content:space-between;gap:10px;font-size:12px;padding-top:10px;border-top:1px solid var(--hairline)}
     .status #signed-as{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .dataroom-link{margin-right:0;padding:7px 12px;font-size:12px;flex-shrink:0}
     .signout{flex-shrink:0}
+
+    .breadcrumb{padding:12px 14px}
+    .admin-banner{padding:12px 14px;font-size:12px;border-radius:10px}
+    .pdf-frame{height:360px}
+    .upload-zone{padding:18px}
+    .doc-list li{padding:10px 12px;font-size:13px}
+
+    .wt-backdrop{padding:12px}
+    .wt-modal{max-height:92vh;border-radius:12px}
+    .wt-head{padding:14px 16px}
+    .wt-body{padding:18px}
+    .wt-foot{padding:12px 16px}
+    .wt-title{font-size:20px}
+    .wt-mock-form .wt-grid{grid-template-columns:1fr}
+    .toast-stack{bottom:14px;right:14px;left:14px;max-width:none}
+    .toast{max-width:none}
+    .confirm-modal{padding:22px;border-radius:12px}
+  }
+
+  @media (max-width:420px){
+    .summary{grid-template-columns:1fr}
+    .summary-cell .val{font-size:24px}
+    h1{font-size:24px}
+    .row-btn.primary{min-width:0;width:100%}
   }
 </style>
 </head>
@@ -126,7 +277,7 @@
 
   <div id="bcWrap"></div>
   <div class="body" id="body">
-    <div style="text-align:center;color:var(--muted);padding:80px 20px">Loading admin dashboard…</div>
+    <div class="loader"><span class="loader-dot"></span><span>Loading admin dashboard…</span></div>
   </div>
 
 <script>
@@ -134,10 +285,85 @@
   const $signedAs = document.getElementById('signed-as');
   const $bc = document.getElementById('bcWrap');
   const LUKAS_EMAIL = 'bondysconstruction@gmail.com';
+  const KEVIN_EMAIL = 'kevin@akcapital.fund';
+  const WALKTHROUGH_EMAILS = [KEVIN_EMAIL, LUKAS_EMAIL];
+  const MAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
+  const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+  const ROSTER_COLGROUP = '<colgroup><col style="width:38%"><col style="width:14%"><col style="width:22%"><col style="width:26%"></colgroup>';
   let me = null;
   let roster = null;
 
   function escape(s){return String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c])}
+
+  function toast(msg, kind = 'info') {
+    let stack = document.getElementById('toastStack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'toastStack';
+      stack.className = 'toast-stack';
+      stack.setAttribute('aria-live', 'polite');
+      stack.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(stack);
+    }
+    const el = document.createElement('div');
+    el.className = `toast toast-${kind}`;
+    el.textContent = msg;
+    stack.appendChild(el);
+    setTimeout(() => el.classList.add('is-out'), 3500);
+    setTimeout(() => el.remove(), 3900);
+  }
+
+  function confirmDialog({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false }) {
+    return new Promise(resolve => {
+      const root = document.createElement('div');
+      root.className = 'wt-backdrop confirm-backdrop';
+      root.innerHTML = `
+        <div class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+          <h3 id="confirmTitle">${escape(title)}</h3>
+          <p id="confirmMsg">${escape(message)}</p>
+          <div class="confirm-actions">
+            <button type="button" class="wt-btn" data-act="cancel">${escape(cancelLabel)}</button>
+            <button type="button" class="wt-btn primary${danger ? ' is-danger' : ''}" data-act="confirm">${escape(confirmLabel)}</button>
+          </div>
+        </div>
+      `;
+      const previouslyFocused = document.activeElement;
+      const cleanup = (val) => {
+        document.removeEventListener('keydown', onKey);
+        document.body.classList.remove('modal-lock');
+        root.remove();
+        try { previouslyFocused && previouslyFocused.focus && previouslyFocused.focus(); } catch {}
+        resolve(val);
+      };
+      const onKey = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+        else if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
+      };
+      document.addEventListener('keydown', onKey);
+      document.body.classList.add('modal-lock');
+      root.addEventListener('click', (e) => {
+        if (e.target === root) return cleanup(false);
+        const act = e.target.closest('[data-act]')?.dataset.act;
+        if (act === 'cancel') cleanup(false);
+        else if (act === 'confirm') cleanup(true);
+      });
+      document.body.appendChild(root);
+      root.querySelector('[data-act="confirm"]').focus();
+    });
+  }
+
+  function resetAddForm() {
+    const form = document.getElementById('addInvestor');
+    if (form) form.reset();
+    const zone = document.getElementById('fileZone');
+    if (zone) {
+      zone.classList.remove('has-file');
+      const label = zone.firstElementChild;
+      if (label) label.textContent = 'Blank promissory note PDF';
+    }
+    const err = document.getElementById('addErr');
+    if (err) err.textContent = '';
+  }
   function fmtMoney(n){const x=Number(n);return Number.isFinite(x)?x.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}):'—'}
   function fmtDate(iso){if(!iso)return '';return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
   function fileExt(name){const m=(name||'').match(/\.([^.]+)$/);return m?m[1].toUpperCase():''}
@@ -184,6 +410,8 @@
     const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0), 0);
     const numSigned = investors.filter(i => i.state === 'fully-executed').length;
     const numAwaiting = investors.filter(i => i.state !== 'fully-executed').length;
+    const myEmail = ((me && me.email) || '').toLowerCase();
+    const canSeeWalkthrough = WALKTHROUGH_EMAILS.includes(myEmail);
 
     $body.innerHTML = `
       <h1>Investor roster</h1>
@@ -209,16 +437,20 @@
       <div class="card">
         <div class="card-head">
           <h2>All investors</h2>
-          <button class="add-btn" id="addToggle">+ Add investor</button>
+          <div class="head-actions">
+            ${canSeeWalkthrough ? `<button class="walkthrough-trigger" id="howItWorks" type="button">See how it works →</button>` : ''}
+            <button class="add-btn" id="addToggle" type="button">+ Add investor</button>
+          </div>
         </div>
 
-        ${investors.length === 0 ? '<div class="empty">No investors yet. Click "+ Add investor" to get started.</div>' : `
+        ${investors.length === 0 ? `<div class="empty"><div class="empty-title">No investors yet</div><div class="empty-sub">Click <strong style="color:var(--gold)">+ Add investor</strong> above to add your first one.</div></div>` : `
         <table class="roster">
+          ${ROSTER_COLGROUP}
           <thead><tr>
-            <th style="width:26%">Name</th>
-            <th style="width:14%">Principal</th>
-            <th style="width:20%">Status</th>
-            <th>Actions</th>
+            <th>Name</th>
+            <th>Principal</th>
+            <th>Status</th>
+            <th class="col-actions">Actions</th>
           </tr></thead>
           <tbody>
             ${investors.map(rowHtml).join('')}
@@ -254,16 +486,22 @@
       ${removed.length ? `
       <div class="card" style="opacity:.7">
         <div class="card-head"><h2>Removed</h2></div>
-        <table class="roster"><tbody>
-          ${removed.map(rowHtml).join('')}
-        </tbody></table>
+        <table class="roster">
+          ${ROSTER_COLGROUP}
+          <tbody>
+            ${removed.map(rowHtml).join('')}
+          </tbody>
+        </table>
       </div>` : ''}
     `;
 
     document.getElementById('addToggle').addEventListener('click', () => {
       document.getElementById('addForm').classList.toggle('open');
     });
+    const $howItWorks = document.getElementById('howItWorks');
+    if ($howItWorks) $howItWorks.addEventListener('click', openWalkthrough);
     document.getElementById('cancelAdd').addEventListener('click', () => {
+      resetAddForm();
       document.getElementById('addForm').classList.remove('open');
     });
     document.getElementById('blankInput').addEventListener('change', (e) => {
@@ -274,9 +512,8 @@
     });
     document.getElementById('addInvestor').addEventListener('submit', addInvestor);
 
-    // Row action handlers
     document.querySelectorAll('[data-act]').forEach(el => {
-      el.addEventListener('click', () => rowAction(el.dataset.act, el.dataset.email));
+      el.addEventListener('click', () => rowAction(el.dataset.act, el.dataset.email, el));
     });
   }
 
@@ -290,30 +527,30 @@
       <td>
         <div class="name-cell">
           <div class="avatar">${escape(initials(inv.name))}</div>
-          <div>
+          <div class="name-text">
             <div class="investor-name">${escape(inv.name)}</div>
             <div class="investor-sub">${escape(inv.email)}</div>
           </div>
         </div>
       </td>
-      <td>${fmtMoney(inv.principal)}</td>
+      <td class="principal-cell">${fmtMoney(inv.principal)}</td>
       <td>${badge}</td>
       <td>
         <div class="actions-cell">
           ${inv.deletedAt ? '' : `<button class="row-btn primary" data-act="open" data-email="${escape(inv.email)}">Open folder →</button>`}
           ${inv.state === 'awaiting-lukas' && me && me.email && me.email.toLowerCase() === LUKAS_EMAIL ? `<button class="row-btn" data-act="sign-as-lukas" data-email="${escape(inv.email)}">Sign now</button>` : ''}
-          ${inv.deletedAt ? '' : `<button class="row-btn" data-act="resend" data-email="${escape(inv.email)}">Resend link</button>`}
-          ${inv.deletedAt ? '' : `<button class="row-btn danger" data-act="remove" data-email="${escape(inv.email)}">Remove</button>`}
+          ${inv.deletedAt ? '' : `<button class="row-btn icon" data-act="resend" data-email="${escape(inv.email)}" title="Resend sign-in link" aria-label="Resend sign-in link">${MAIL_ICON}</button>`}
+          ${inv.deletedAt ? '' : `<button class="row-btn icon danger" data-act="remove" data-email="${escape(inv.email)}" title="Remove investor" aria-label="Remove investor">${TRASH_ICON}</button>`}
         </div>
       </td>
     </tr>`;
   }
 
-  function rowAction(act, email) {
+  function rowAction(act, email, btn) {
     if (act === 'open') { window.location.search = '?email=' + encodeURIComponent(email); return; }
     if (act === 'sign-as-lukas') { window.location.href = '/portal/admin/sign?email=' + encodeURIComponent(email); return; }
-    if (act === 'resend') return resendLink(email);
-    if (act === 'remove') return removeInvestor(email);
+    if (act === 'resend') return resendLink(email, btn);
+    if (act === 'remove') return removeInvestor(email, btn);
   }
 
   async function addInvestor(e) {
@@ -322,46 +559,74 @@
     const form = e.currentTarget;
     const fd = new FormData(form);
     const btn = form.querySelector('button[type=submit]');
+    const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & notify Lukas'; };
     btn.disabled = true; btn.textContent = 'Creating…';
     try {
       const res = await fetch('/api/portal/add-investor', { method:'POST', body: fd });
       const data = await res.json();
       if (data.ok) {
+        toast('Investor added. Lukas has been notified.', 'success');
         const r = await loadRoster(); roster = r;
         renderRoster();
       } else {
         errEl.textContent = data.message || 'Could not create.';
-        btn.disabled = false; btn.textContent = 'Create investor & notify Lukas';
+        restore();
       }
     } catch (err) {
-      errEl.textContent = 'Network error.';
-      btn.disabled = false; btn.textContent = 'Create investor & notify Lukas';
+      errEl.textContent = 'Network error. Try again.';
+      restore();
     }
   }
 
-  async function resendLink(email) {
-    if (!confirm('Email a fresh sign-in link to ' + email + '?')) return;
+  async function resendLink(email, btn) {
+    const ok = await confirmDialog({
+      title: 'Resend sign-in link?',
+      message: `A fresh sign-in link will be emailed to ${email}.`,
+      confirmLabel: 'Send link'
+    });
+    if (!ok) return;
+    if (btn) btn.disabled = true;
     try {
       const res = await fetch('/api/portal/resend-link', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email, kind: 'setup' })
       });
       const data = await res.json();
-      alert(data.ok ? 'Link emailed.' : ('Failed: ' + (data.message||'')));
-    } catch (err) { alert('Network error.'); }
+      if (data.ok) toast('Sign-in link emailed.', 'success');
+      else toast(data.message || 'Could not send link.', 'error');
+    } catch {
+      toast('Network error. Try again.', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
-  async function removeInvestor(email) {
-    if (!confirm('Remove ' + email + '?\\n\\nThey will lose access. Drive folder + signed PDFs are kept.')) return;
+  async function removeInvestor(email, btn) {
+    const ok = await confirmDialog({
+      title: 'Remove investor?',
+      message: `${email} will lose portal access. Their Drive folder and any signed PDFs are kept.`,
+      confirmLabel: 'Remove',
+      danger: true
+    });
+    if (!ok) return;
+    if (btn) btn.disabled = true;
     try {
       const res = await fetch('/api/portal/remove-investor', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-      if (data.ok) { const r = await loadRoster(); roster = r; renderRoster(); }
-      else alert('Failed: ' + (data.message||''));
-    } catch (err) { alert('Network error.'); }
+      if (data.ok) {
+        toast('Investor removed.', 'success');
+        const r = await loadRoster(); roster = r; renderRoster();
+      } else {
+        toast(data.message || 'Could not remove investor.', 'error');
+        if (btn) btn.disabled = false;
+      }
+    } catch {
+      toast('Network error. Try again.', 'error');
+      if (btn) btn.disabled = false;
+    }
   }
 
   // ---------- Drill-down ----------
@@ -420,7 +685,7 @@
             <div class="upload-title">Upload to ${escape(inv.name)}'s folder</div>
             <div class="upload-sub">25 MB per file</div>
           </label>
-          <input type="file" id="adminUploadInput" style="display:none">
+          <input type="file" id="adminUploadInput" multiple style="display:none">
         </form>
         <div class="err" id="adminUpErr"></div>
         <ul class="doc-list" id="adminDocList"></ul>
@@ -451,22 +716,245 @@
     const zone = document.getElementById('adminUploadZone');
     const input = document.getElementById('adminUploadInput');
     const errEl = document.getElementById('adminUpErr');
+    let dragDepth = 0;
+    let busy = false;
+
+    zone.addEventListener('dragenter', e => {
+      e.preventDefault();
+      if (busy) return;
+      dragDepth++;
+      zone.classList.add('drag');
+    });
+    zone.addEventListener('dragover', e => { e.preventDefault(); });
+    zone.addEventListener('dragleave', e => {
+      e.preventDefault();
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) zone.classList.remove('drag');
+    });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      dragDepth = 0;
+      zone.classList.remove('drag');
+      if (busy) return;
+      doUpload(e.dataTransfer.files);
+    });
     input.addEventListener('change', () => doUpload(input.files));
-    ;['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('drag'); }));
-    ;['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('drag'); }));
-    zone.addEventListener('drop', e => { e.preventDefault(); doUpload(e.dataTransfer.files); });
-    async function doUpload(files) {
+
+    async function doUpload(filesLike) {
+      const files = Array.from(filesLike || []);
+      if (!files.length || busy) return;
+      busy = true;
       errEl.textContent = '';
-      for (const f of files) {
-        const fd = new FormData(); fd.append('file', f); fd.append('target', email);
+      zone.classList.add('is-busy');
+      const total = files.length;
+      const titleEl = zone.querySelector('.upload-title');
+      const originalTitle = titleEl ? titleEl.textContent : '';
+      let succeeded = 0;
+      let failed = 0;
+      let lastError = '';
+
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (titleEl) titleEl.textContent = `Uploading ${i + 1} of ${total}: ${f.name}`;
+        const fd = new FormData();
+        fd.append('file', f); fd.append('target', email);
         try {
           const res = await fetch('/api/portal/upload', { method:'POST', body: fd });
           const data = await res.json();
-          if (!data.ok) { errEl.textContent = data.message || 'Upload failed.'; return; }
-        } catch { errEl.textContent = 'Network error.'; return; }
+          if (data.ok) succeeded++;
+          else { failed++; lastError = data.message || 'Upload failed.'; }
+        } catch {
+          failed++; lastError = 'Network error.';
+        }
       }
-      renderDrillDown(email);
+
+      if (titleEl) titleEl.textContent = originalTitle;
+      zone.classList.remove('is-busy');
+      input.value = '';
+      busy = false;
+
+      if (succeeded > 0 && failed === 0) {
+        toast(succeeded === 1 ? 'File uploaded.' : `${succeeded} files uploaded.`, 'success');
+      } else if (succeeded > 0 && failed > 0) {
+        toast(`${succeeded} uploaded, ${failed} failed. ${lastError}`.trim(), 'error');
+      } else {
+        errEl.textContent = lastError || 'Upload failed.';
+        toast(lastError || 'Upload failed.', 'error');
+      }
+
+      if (succeeded > 0) renderDrillDown(email);
     }
+  }
+
+  // ---------- Walkthrough ----------
+  const WALKTHROUGH_STEPS = [
+    {
+      title: 'Add the investor',
+      narr: `Fill in their details and drop in the pre-filled blank promissory note PDF. As soon as you save, we create their Drive folder and email Lukas to sign.`,
+      mock: `
+        <div class="wt-mock wt-mock-form">
+          <div class="wt-mock-label">+ Add investor</div>
+          <div class="wt-field"><div class="wt-field-label">Full legal name</div><div class="wt-field-val">Jane Doe</div></div>
+          <div class="wt-field"><div class="wt-field-label">Email</div><div class="wt-field-val">jane@example.com</div></div>
+          <div class="wt-grid">
+            <div class="wt-field"><div class="wt-field-label">Principal</div><div class="wt-field-val">$125,000</div></div>
+            <div class="wt-field"><div class="wt-field-label">Rate</div><div class="wt-field-val">20% per annum</div></div>
+          </div>
+          <div class="wt-field"><div class="wt-field-label">Term</div><div class="wt-field-val">20 months</div></div>
+          <div class="wt-drop">✓ jane-doe-promissory-note.pdf</div>
+        </div>
+      `
+    },
+    {
+      title: 'Lukas gets notified',
+      narr: `Lukas receives an email the moment the investor is created. One click takes him to the admin signature queue.`,
+      mock: `
+        <div class="wt-mock">
+          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To Lukas Bondy</div>
+          <div class="wt-em-subj">New promissory note awaiting your signature — Jane Doe</div>
+          <div class="wt-em-body">Hi Lukas,<br><br>Kevin has added <strong>Jane Doe</strong> ($125,000) to the investor portal. Open your admin dashboard to sign as Debtor and Guarantor.</div>
+          <span class="wt-em-cta">Open signature queue</span>
+        </div>
+      `
+    },
+    {
+      title: 'Lukas signs as Debtor & Guarantor',
+      narr: `Lukas reviews the blank PDF and signs once. We overlay his signature and save it as <strong>lukas-signed-promissory-note.pdf</strong> in Jane's folder.`,
+      mock: `
+        <div class="wt-mock">
+          <div class="wt-mock-label">/portal/admin/sign</div>
+          <div class="wt-pdf">PDF preview</div>
+          <span class="wt-sign-btn">Sign as Debtor &amp; Guarantor →</span>
+        </div>
+        <div class="wt-mock wt-mock-badges">
+          <span class="badge pending-lukas">Awaiting Lukas</span>
+          <span class="wt-arrow">→</span>
+          <span class="badge pending-investor">Awaiting investor</span>
+        </div>
+      `
+    },
+    {
+      title: 'Investor is invited to counter-sign',
+      narr: `Jane gets her ready-to-sign email. If she hasn't set a portal password yet, this same email doubles as her setup link.`,
+      mock: `
+        <div class="wt-mock">
+          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
+          <div class="wt-em-subj">Your promissory note for The Avenue is ready to sign</div>
+          <div class="wt-em-body">Hello Jane,<br><br>Lukas Bondy has signed his portion (Debtor and Guarantor) of your <strong>$125,000</strong> promissory note. The document is now ready for your counter-signature as Creditor.</div>
+          <span class="wt-em-cta">Set password &amp; sign your note</span>
+        </div>
+      `
+    },
+    {
+      title: 'Investor counter-signs in their portal',
+      narr: `Jane reviews Lukas's signed copy in her portal and counter-signs as Creditor. The fully-executed PDF is saved as <strong>signed-promissory-note.pdf</strong>.`,
+      mock: `
+        <div class="wt-mock">
+          <div class="wt-mock-label">/portal — Jane's documents</div>
+          <div class="wt-doc"><span class="wt-doc-tag">PDF</span><span class="wt-doc-name">lukas-signed-promissory-note.pdf</span><span class="badge pending-investor">Ready</span></div>
+          <div class="wt-sign-row"><span class="wt-sign-btn">Counter-sign as Creditor →</span></div>
+        </div>
+        <div class="wt-mock wt-mock-badges">
+          <span class="badge pending-investor">Awaiting investor</span>
+          <span class="wt-arrow">→</span>
+          <span class="badge signed">✓ Signed</span>
+        </div>
+      `
+    },
+    {
+      title: 'Executed copy is delivered',
+      narr: `Jane receives the fully-executed PDF, and you get a heads-up that it's time to send wire instructions.`,
+      mock: `
+        <div class="wt-mock">
+          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
+          <div class="wt-em-subj">Your fully-executed promissory note</div>
+          <div class="wt-em-body">Hello Jane,<br><br>Attached is your fully-executed <strong>$125,000</strong> promissory note for The Avenue at Fountain Hills. Lukas Bondy has signed as Debtor and Guarantor; your counter-signature as Creditor is now on file.</div>
+          <span class="wt-em-attach"><span class="wt-em-tag">PDF</span>signed-promissory-note.pdf</span>
+        </div>
+        <div class="wt-mock">
+          <div class="wt-em-from">From <strong>The Avenue Portal</strong> · To Kevin@AKCapital.fund</div>
+          <div class="wt-em-subj">Jane Doe signed their promissory note ($125,000)</div>
+          <div class="wt-em-body">Kevin — <strong>Jane Doe</strong> just counter-signed their <strong>$125,000</strong> promissory note. Time to send wire instructions.</div>
+        </div>
+      `
+    }
+  ];
+
+  function openWalkthrough() {
+    let idx = 0;
+    const root = document.createElement('div');
+    root.className = 'wt-backdrop';
+    root.innerHTML = `
+      <div class="wt-modal" role="dialog" aria-modal="true" aria-label="Signing flow walkthrough">
+        <div class="wt-head">
+          <div class="wt-dots">${WALKTHROUGH_STEPS.map((_,i) => `<button class="wt-dot" data-i="${i}" type="button" aria-label="Step ${i+1}"></button>`).join('')}</div>
+          <div class="wt-meta">
+            <span class="wt-counter" id="wtCounter"></span>
+            <button class="wt-close" id="wtClose" type="button" aria-label="Close walkthrough">×</button>
+          </div>
+        </div>
+        <div class="wt-body" id="wtBody">
+          ${WALKTHROUGH_STEPS.map((s,i) => `
+            <section class="wt-step" data-i="${i}">
+              <h3 class="wt-title">${escape(s.title)}</h3>
+              <p class="wt-narr">${s.narr}</p>
+              ${s.mock}
+            </section>
+          `).join('')}
+        </div>
+        <div class="wt-foot">
+          <button class="wt-btn" id="wtPrev" type="button">← Back</button>
+          <button class="wt-btn primary" id="wtNext" type="button">Next →</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(root);
+    document.body.classList.add('modal-lock');
+    const previouslyFocused = document.activeElement;
+
+    const $prev = root.querySelector('#wtPrev');
+    const $next = root.querySelector('#wtNext');
+    const $counter = root.querySelector('#wtCounter');
+    const $body = root.querySelector('#wtBody');
+    const $dots = root.querySelectorAll('.wt-dot');
+    const $steps = root.querySelectorAll('.wt-step');
+    $next.focus();
+
+    function render() {
+      $steps.forEach((el,i) => el.classList.toggle('is-active', i === idx));
+      $dots.forEach((el,i) => {
+        el.classList.toggle('is-active', i === idx);
+        el.classList.toggle('is-done', i < idx);
+      });
+      $counter.textContent = `Step ${idx+1} of ${WALKTHROUGH_STEPS.length}`;
+      $prev.disabled = idx === 0;
+      $next.textContent = idx === WALKTHROUGH_STEPS.length - 1 ? 'Done' : 'Next →';
+      $body.scrollTop = 0;
+    }
+
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('modal-lock');
+      root.remove();
+      try { previouslyFocused && previouslyFocused.focus && previouslyFocused.focus(); } catch {}
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight' && idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
+      else if (e.key === 'ArrowLeft' && idx > 0) { idx--; render(); }
+    }
+
+    $prev.addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
+    $next.addEventListener('click', () => {
+      if (idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
+      else close();
+    });
+    root.querySelector('#wtClose').addEventListener('click', close);
+    root.addEventListener('click', (e) => { if (e.target === root) close(); });
+    $dots.forEach(d => d.addEventListener('click', () => { idx = Number(d.dataset.i); render(); }));
+    document.addEventListener('keydown', onKey);
+
+    render();
   }
 
   init();

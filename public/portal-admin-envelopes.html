@@ -43,10 +43,32 @@
   .r-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,0.20);border:1px solid var(--hairline);padding:2px 8px;border-radius:12px;font-size:11px;margin:2px 4px 2px 0}
   .r-chip.signed{border-color:rgba(159,214,168,0.4);color:#9FD6A8}
   .r-chip .check{font-size:10px}
-  .row-btn{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;margin-right:4px}
+  .row-btn{background:rgba(255,255,255,0.06);border:1px solid var(--hairline);color:var(--text);padding:7px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;margin-right:4px;white-space:nowrap;font-family:inherit}
   .row-btn:hover{border-color:var(--gold);color:var(--gold)}
-  .row-btn.danger:hover{border-color:#ff9a9a;color:#ff9a9a}
-  .empty{color:var(--muted);font-style:italic;text-align:center;padding:40px 20px}
+  .row-btn:disabled{opacity:.45;cursor:wait}
+  .row-btn.danger:hover:not(:disabled){border-color:#ff9a9a;color:#ff9a9a;background:rgba(255,154,154,0.06)}
+  .empty{color:var(--muted);text-align:center;padding:40px 20px;background:rgba(0,0,0,0.12);border:1px dashed var(--hairline);border-radius:12px}
+
+  @media (max-width:720px){
+    .header{padding:14px 16px}
+    .brand{font-size:18px}
+    .brand-tag{display:none}
+    .breadcrumb{padding:12px 14px}
+    .body{padding:22px 14px 60px}
+    h1{font-size:24px}
+    .card{padding:16px 14px}
+    .card-head{flex-direction:column;align-items:stretch;gap:10px}
+    .new-btn{text-align:center;padding:11px 14px}
+
+    table,thead,tbody,tr,td,th{display:block;width:auto}
+    thead{display:none}
+    tr{background:rgba(0,0,0,0.22);border:1px solid var(--hairline);border-radius:12px;padding:14px;margin-bottom:10px}
+    tr:hover{background:rgba(0,0,0,0.22)}
+    td{padding:0;border-bottom:0}
+    td + td{margin-top:10px}
+    td:last-child{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+    td:last-child .row-btn{flex:1;margin-right:0;text-align:center}
+  }
 </style>
 </head>
 <body>
@@ -107,7 +129,7 @@
     }
     html += '</div>';
     body.innerHTML = html;
-    body.querySelectorAll('[data-act]').forEach(el => el.addEventListener('click', e => handleAction(el.dataset.act, el.dataset.id, el.dataset.recipientId)));
+    body.querySelectorAll('[data-act]').forEach(el => el.addEventListener('click', () => handleAction(el.dataset.act, el.dataset.id, el)));
   }
 
   function rowHtml(env) {
@@ -154,14 +176,20 @@
     return map[status] || '<span class="badge draft">' + escapeHtml(status) + '</span>';
   }
 
-  async function handleAction(act, id) {
+  async function handleAction(act, id, btn) {
     if (act === 'open') { window.location.href = '/portal/admin/envelope?id=' + encodeURIComponent(id); return; }
     if (act === 'void') {
       if (!confirm('Void this envelope? Signers will no longer be able to use their links.')) return;
-      const r = await fetch('/api/portal/envelopes/void', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
-      const d = await r.json();
-      if (!d.ok) { alert(d.message || 'Could not void.'); return; }
-      load();
+      if (btn) btn.disabled = true;
+      try {
+        const r = await fetch('/api/portal/envelopes/void', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+        const d = await r.json();
+        if (!d.ok) { alert(d.message || 'Could not void.'); if (btn) btn.disabled = false; return; }
+        load();
+      } catch (err) {
+        alert('Network error: ' + err.message);
+        if (btn) btn.disabled = false;
+      }
     }
   }
   load();

@@ -47,6 +47,23 @@
   .err{color:#ff9a9a;font-size:13px;margin-top:8px}
   .done{padding:80px 24px;text-align:center}
   .done h2{font-family:'Cormorant Garamond',serif;font-size:32px;color:white;margin:0 0 12px}
+
+  @media (max-width:720px){
+    .header{padding:14px 16px}
+    .brand{font-size:18px}
+    .brand-tag{display:none}
+    .body{padding:18px 14px 100px}
+    .hero h1{font-size:22px}
+    .hero .sub{font-size:12px}
+    .banner{padding:12px 14px;font-size:12px;border-radius:10px}
+    .page-num{top:-18px;font-size:10px}
+    .sticky-bar{flex-direction:column;align-items:stretch;gap:10px;padding:12px 14px;margin:20px -14px -100px}
+    .sticky-bar > div{width:100%}
+    .agree{font-size:11px;max-width:none}
+    .sign-btn{width:100%;padding:14px}
+    .done{padding:60px 18px}
+    .done h2{font-size:24px}
+  }
 </style>
 </head>
 <body>
@@ -101,21 +118,23 @@
     const env = state.envelope;
     const me = (env.recipients || []).find(r => r.id === state.viewerRecipientId);
 
+    // Check "already signed" before "voided" so a recipient who finished their
+    // part sees the helpful message rather than a confusing void notice.
+    if (me && me.signedAt) {
+      document.getElementById('body').innerHTML = `
+        <div class="done">
+          <h2>You've already signed this document.</h2>
+          <p style="color:var(--muted)">Waiting for the remaining recipients. We'll email you the fully-executed copy when everyone has signed.</p>
+          <p style="margin-top:24px"><a href="/portal" style="color:var(--gold);text-decoration:underline">Back to portal</a></p>
+        </div>`;
+      return;
+    }
     if (env.status === 'voided') { showError('This envelope has been voided by the sender.'); return; }
     if (env.status === 'executed') {
       document.getElementById('body').innerHTML = `
         <div class="done">
           <h2>This document is fully executed.</h2>
           <p style="color:var(--muted)">All signatures are on file. A copy was emailed to every recipient.</p>
-          <p style="margin-top:24px"><a href="/portal" style="color:var(--gold);text-decoration:underline">Back to portal</a></p>
-        </div>`;
-      return;
-    }
-    if (me && me.signedAt) {
-      document.getElementById('body').innerHTML = `
-        <div class="done">
-          <h2>You've already signed this document.</h2>
-          <p style="color:var(--muted)">Waiting for the remaining recipients. We'll email you the fully-executed copy when everyone has signed.</p>
           <p style="margin-top:24px"><a href="/portal" style="color:var(--gold);text-decoration:underline">Back to portal</a></p>
         </div>`;
       return;
@@ -226,7 +245,7 @@
           const input = document.createElement('input');
           input.type = 'text';
           if (f.type === 'signature') input.className = 'sig';
-          input.placeholder = f.type === 'signature' ? (recipient ? recipient.name : 'Type your name') : 'AB';
+          input.placeholder = f.type === 'signature' ? ((recipient && recipient.name) || 'Type your name') : 'AB';
           input.dataset.fid = f.id;
           input.addEventListener('input', e => { state.values[f.id] = e.target.value; updateProgress(); });
           fld.appendChild(input);
