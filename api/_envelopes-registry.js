@@ -12,7 +12,7 @@
 //       id, title, status, createdBy, createdAt, sentAt, executedAt,
 //       sourcePdfId, sourcePdfName, sourcePdfSha256,
 //       executedPdfId, destinationFolderId,
-//       enforceOrder, aiSuggestions,
+//       enforceOrder, ccAdmin,
 //       recipients: [{ id, email, name, role, order, signNonce,
 //                      invitedAt, signedAt, signedIp, signedUserAgent }],
 //       fields: [{ id, recipientId, type, page, x, y, width, height,

@@ -42,9 +42,11 @@ export async function flattenEnvelope(pdfBytes, fields) {
       width = font.widthOfTextAtSize(text, size);
     }
 
-    // Baseline placed ~30% above the bottom of the field box — visually
-    // centred for both script and Helvetica.
-    const baselineY = f.y + Math.max(0, (f.height - size) * 0.30);
+    // Vertically centre the text inside the field box. Cap-height is ~70% of
+    // font size for both Helvetica and Times Italic, so the visual midline of
+    // a glyph sits ~size*0.35 above the baseline. Match the HTML signer UI,
+    // which centres the input inside the same box (align-items:center).
+    const baselineY = f.y + Math.max(0, (f.height - size * 0.7) / 2);
     page.drawText(text, {
       x: f.x + 2,
       y: baselineY,

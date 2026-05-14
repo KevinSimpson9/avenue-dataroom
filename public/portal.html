@@ -337,25 +337,13 @@
       `;
     }
 
-    // Document preview + (if applicable) sign form
-    if (readyToSign || fullyExecuted || awaitingLukas) {
+    // Show any previously-executed note PDF for reference. Signing now happens
+    // through the envelopes section below, not via a bespoke form on this page.
+    if (fullyExecuted && previewUrl) {
       html += `<div class="card">
-        <h2>${fullyExecuted ? 'Your signed note' : (readyToSign ? 'Review & sign' : 'Your draft note')}</h2>
-        ${previewUrl ? `<p class="lead">${fullyExecuted ? 'Fully-executed copy' : readyToSign ? 'Lukas-signed, awaiting your signature' : 'Draft (awaiting Lukas\'s signature)'}</p><div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>` : '<p class="lead" style="color:var(--muted);font-style:italic">Document not available yet.</p>'}
-        ${readyToSign ? `
-          <div class="sig-grid">
-            <div class="field"><label>Printed name (on file)</label><input type="text" value="${escape(inv.name)}" disabled></div>
-            <div class="field"><label>Date</label><input type="text" value="${fmtDate(new Date().toISOString())}" disabled></div>
-          </div>
-          <div class="field"><label>Type your full legal name as signature</label><input type="text" id="typedSig" class="sig" placeholder="${escape(inv.name)}"></div>
-          <label class="agree">
-            <input type="checkbox" id="agreeBox">
-            <span>I have read and agree to be bound by the terms of this Promissory Note. Typing my name above constitutes my legal electronic signature as Creditor under applicable e-sign law (UETA / E-SIGN Act).</span>
-          </label>
-          <button class="sign-btn" id="signBtn" disabled>Sign promissory note</button>
-          <div class="err" id="signErr"></div>
-          <div class="ok" id="signOk"></div>
-        ` : ''}
+        <h2>Your signed note</h2>
+        <p class="lead">Fully-executed copy</p>
+        <div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>
       </div>`;
     }
 
@@ -385,8 +373,6 @@
 
     $body.innerHTML = html;
 
-    // Wire up sign button
-    if (readyToSign) wireSign(inv);
     wireUpload(inv);
     renderDocList(files);
     loadMyEnvelopes();
@@ -433,39 +419,6 @@
 
   function firstName(n){ return (n||'').split(' ')[0]; }
 
-  function wireSign(inv) {
-    const typed = document.getElementById('typedSig');
-    const agree = document.getElementById('agreeBox');
-    const btn = document.getElementById('signBtn');
-    const errEl = document.getElementById('signErr');
-    const okEl = document.getElementById('signOk');
-    function update() {
-      const match = (typed.value || '').trim().toLowerCase() === inv.name.toLowerCase();
-      btn.disabled = !(match && agree.checked);
-    }
-    typed.addEventListener('input', update);
-    agree.addEventListener('change', update);
-    btn.addEventListener('click', async () => {
-      btn.disabled = true; btn.textContent = 'Signing…'; errEl.textContent=''; okEl.textContent='';
-      try {
-        const res = await fetch('/api/portal/sign', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ typedSignature: typed.value.trim(), agreed: true })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          okEl.textContent = '✓ Signed. Refreshing your portal…';
-          setTimeout(load, 800);
-        } else {
-          errEl.textContent = data.message || 'Could not sign.';
-          btn.disabled = false; btn.textContent = 'Sign promissory note';
-        }
-      } catch (err) {
-        errEl.textContent = 'Network error. Please try again.';
-        btn.disabled = false; btn.textContent = 'Sign promissory note';
-      }
-    });
-  }
 
   function wireUpload(inv) {
     const zone = document.getElementById('uploadZone');

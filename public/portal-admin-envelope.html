@@ -149,6 +149,10 @@
             <input type="checkbox" id="initEnforceOrder">
             Enforce signing order (each recipient is invited only after the previous one signs)
           </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+            <input type="checkbox" id="initCcAdmin" checked>
+            CC Kevin (admin) on every signing invitation and the executed copy
+          </label>
 
           <label style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-top:6px">PDF</label>
           <label class="upload-zone" for="initPdfInput" id="initPdfZone" style="margin:0">
@@ -169,6 +173,7 @@
     <div class="topbar">
       <input type="text" id="title" placeholder="Envelope title">
       <label class="toggle"><input type="checkbox" id="enforceOrder"> Enforce signing order</label>
+      <label class="toggle"><input type="checkbox" id="ccAdmin" checked> CC Kevin (admin) on invitations</label>
       <button class="btn" id="saveBtn">Save draft</button>
       <button class="btn primary" id="sendBtn">Send for signature</button>
     </div>
@@ -178,13 +183,6 @@
       </div>
       <div class="sidebar">
         <div id="sideStatus"></div>
-
-        <h3>AI assist</h3>
-        <p class="hint">Let Claude pre-suggest where signature/date/text fields belong on this PDF. You can drag, edit, or delete any suggestion.</p>
-        <div class="ai-row">
-          <button class="btn" id="aiDetect">✨ Auto-detect fields</button>
-          <button class="btn" id="aiClear">Clear suggestions</button>
-        </div>
 
         <h3>Field palette</h3>
         <p class="hint">Click a type, then click on the page to place. Drag the corner to resize.</p>
@@ -315,6 +313,7 @@
         const fd = new FormData();
         fd.append('title', title);
         fd.append('enforceOrder', $('initEnforceOrder').checked ? 'true' : 'false');
+        fd.append('ccAdmin', $('initCcAdmin').checked ? 'true' : 'false');
         fd.append('recipients', JSON.stringify(cleanR.map((r, i) => ({ name: r.name, email: r.email, role: r.role, order: i + 1 }))));
         fd.append('pdf', pdfFile);
         const res = await fetch('/api/portal/envelopes/create', { method: 'POST', body: fd });
@@ -350,10 +349,11 @@
       $('bcLast').textContent = state.envelope.title || 'Envelope';
       $('title').value = state.envelope.title || '';
       $('enforceOrder').checked = !!state.envelope.enforceOrder;
+      $('ccAdmin').checked = state.envelope.ccAdmin !== false;
       // If envelope is already sent/executed, lock the UI.
       if (state.envelope.status !== 'draft') {
         $('saveBtn').disabled = true; $('sendBtn').disabled = true;
-        $('title').disabled = true; $('enforceOrder').disabled = true;
+        $('title').disabled = true; $('enforceOrder').disabled = true; $('ccAdmin').disabled = true;
         setStatus('info', 'This envelope is ' + state.envelope.status + ' and can no longer be edited.');
       }
       renderRecipients();
@@ -454,10 +454,7 @@
 
   function renderChips() {
     document.querySelectorAll('.chip').forEach(el => el.remove());
-    const allFields = [
-      ...(state.envelope.fields || []),
-      ...((state.envelope.aiSuggestions || []).filter(s => !(state.envelope.fields || []).some(f => f.id === s.id)))
-    ];
+    const allFields = state.envelope.fields || [];
     for (const f of allFields) {
       const wrap = document.querySelector('.page-wrap[data-page="' + f.page + '"]');
       if (!wrap) continue;
@@ -468,7 +465,7 @@
       const hCanvas = f.height * dims.renderScale;
       const yCanvas = (dims.heightPt - f.y - f.height) * dims.renderScale;
       const chip = document.createElement('div');
-      chip.className = 'chip ' + (f.status === 'confirmed' ? 'confirmed' : '');
+      chip.className = 'chip confirmed';
       if (f.id === state.selectedFieldId) chip.classList.add('selected');
       chip.style.left = xCanvas + 'px';
       chip.style.top = yCanvas + 'px';
@@ -476,7 +473,7 @@
       chip.style.height = hCanvas + 'px';
       chip.dataset.fieldId = f.id;
       const recipient = (state.envelope.recipients || []).find(r => r.id === f.recipientId);
-      const recipientLabel = recipient ? recipient.name : (f.suggestedRecipientLabel || 'Unassigned');
+      const recipientLabel = recipient ? recipient.name : 'Unassigned';
       chip.innerHTML = `
         <span class="type-tag">${escapeHtml(f.type)}</span>
         <span class="recipient-tag">${escapeHtml(recipientLabel)}</span>
@@ -494,13 +491,9 @@
       e.stopPropagation();
       if (e.target.dataset.remove) {
         state.envelope.fields = (state.envelope.fields || []).filter(x => x.id !== field.id);
-        // Also drop from suggestions if it came from there.
-        state.envelope.aiSuggestions = (state.envelope.aiSuggestions || []).filter(x => x.id !== field.id);
         renderChips(); renderFields();
         return;
       }
-      // Promote suggested → confirmed on any interaction.
-      promoteSuggested(field);
       const isResize = !!e.target.dataset.handle;
       const startX = e.clientX, startY = e.clientY;
       const startLeft = parseFloat(chip.style.left), startTop = parseFloat(chip.style.top);
@@ -541,16 +534,6 @@
     });
   }
 
-  function promoteSuggested(field) {
-    if (field.status !== 'confirmed') {
-      field.status = 'confirmed';
-      state.envelope.fields = state.envelope.fields || [];
-      if (!state.envelope.fields.some(f => f.id === field.id)) state.envelope.fields.push(field);
-      state.envelope.aiSuggestions = (state.envelope.aiSuggestions || []).filter(s => s.id !== field.id);
-      renderFields();
-    }
-  }
-
   function renderRecipients() {
     const el = $('recipientsList');
     const list = state.envelope.recipients || [];
@@ -583,27 +566,21 @@
   function renderFields() {
     const el = $('fieldsList');
     const recipients = state.envelope.recipients || [];
-    const all = [
-      ...((state.envelope.fields || []).map(f => ({ ...f, _src: 'confirmed' }))),
-      ...(state.envelope.aiSuggestions || []).filter(s => !(state.envelope.fields || []).some(f => f.id === s.id)).map(s => ({ ...s, _src: 'suggested' }))
-    ];
+    const all = state.envelope.fields || [];
     $('fieldCount').textContent = all.length ? `(${all.length})` : '';
     if (!all.length) { el.innerHTML = '<div class="empty">No fields placed yet.</div>'; return; }
     el.innerHTML = all.map(f => {
-      const isConf = f.status === 'confirmed';
       const opts = ['<option value="">— Assign recipient —</option>',
         ...recipients.map(r => `<option value="${escapeHtml(r.id)}" ${r.id === f.recipientId ? 'selected' : ''}>${escapeHtml(r.name)}</option>`)
       ].join('');
       return `
-        <div class="field-row ${isConf ? 'confirmed' : 'suggested'}" data-fid="${escapeHtml(f.id)}">
+        <div class="field-row confirmed" data-fid="${escapeHtml(f.id)}">
           <div class="top">
-            <span class="type">${escapeHtml(f.type)}${isConf ? '' : ' · suggested'}</span>
+            <span class="type">${escapeHtml(f.type)}</span>
             <span class="page">p${f.page}</span>
           </div>
-          ${(!isConf && f.suggestedRecipientLabel) ? `<div class="label-hint">AI guessed: "${escapeHtml(f.suggestedRecipientLabel)}"</div>` : ''}
           <select data-fid="${escapeHtml(f.id)}">${opts}</select>
           <div class="actions">
-            ${isConf ? '' : '<a data-confirm="' + escapeHtml(f.id) + '">Confirm</a>'}
             <a class="danger" data-del="${escapeHtml(f.id)}">Delete</a>
           </div>
         </div>
@@ -612,29 +589,14 @@
     el.querySelectorAll('select').forEach(s => {
       s.addEventListener('change', e => {
         const fid = e.target.dataset.fid;
-        const list = state.envelope.fields || [];
-        const sug = state.envelope.aiSuggestions || [];
-        const f = list.find(x => x.id === fid) || sug.find(x => x.id === fid);
-        if (f) {
-          f.recipientId = e.target.value;
-          promoteSuggested(f);
-          renderChips();
-        }
-      });
-    });
-    el.querySelectorAll('[data-confirm]').forEach(a => {
-      a.addEventListener('click', e => {
-        const fid = e.target.dataset.confirm;
-        const sug = (state.envelope.aiSuggestions || []).find(s => s.id === fid);
-        if (sug) promoteSuggested(sug);
-        renderFields(); renderChips();
+        const f = (state.envelope.fields || []).find(x => x.id === fid);
+        if (f) { f.recipientId = e.target.value; renderChips(); }
       });
     });
     el.querySelectorAll('[data-del]').forEach(a => {
       a.addEventListener('click', e => {
         const fid = e.target.dataset.del;
         state.envelope.fields = (state.envelope.fields || []).filter(x => x.id !== fid);
-        state.envelope.aiSuggestions = (state.envelope.aiSuggestions || []).filter(x => x.id !== fid);
         renderFields(); renderChips();
       });
     });
@@ -680,87 +642,93 @@
 
     $('title').addEventListener('input', e => { state.envelope.title = e.target.value; });
     $('enforceOrder').addEventListener('change', e => { state.envelope.enforceOrder = e.target.checked; renderRecipients(); });
+    $('ccAdmin').addEventListener('change', e => { state.envelope.ccAdmin = e.target.checked; });
 
-    $('saveBtn').addEventListener('click', saveDraft);
+    $('saveBtn').addEventListener('click', () => {
+      saveDraft().catch(err => setStatus('err', err.message));
+    });
     $('sendBtn').addEventListener('click', sendForSignature);
 
-    $('aiDetect').addEventListener('click', async () => {
-      const btn = $('aiDetect');
-      btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Scanning…';
-      setStatus('info', 'Asking Claude to identify signature regions…');
-      try {
-        const res = await fetch('/api/portal/envelopes/suggest', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: state.envelope.id })
-        });
-        const d = await res.json();
-        if (!d.ok) throw new Error(d.message || 'AI request failed.');
-        state.envelope.aiSuggestions = d.suggestions || [];
-        if (!d.suggestions || !d.suggestions.length) setStatus('info', 'Claude did not find any signature regions. Place fields manually.');
-        else setStatus('ok', `Suggested ${d.suggestions.length} field${d.suggestions.length === 1 ? '' : 's'}. Assign each to a recipient.`);
-        renderChips(); renderFields();
-      } catch (err) {
-        setStatus('err', err.message);
-      } finally {
-        btn.disabled = false; btn.textContent = orig;
-      }
-    });
-
-    $('aiClear').addEventListener('click', () => {
-      state.envelope.aiSuggestions = [];
-      state.envelope.fields = (state.envelope.fields || []).filter(f => f.status === 'confirmed');
-      renderChips(); renderFields();
-      setStatus('ok', 'Suggestions cleared.');
-    });
   }
 
-  async function saveDraft() {
-    setStatus('info', 'Saving…');
+  async function saveDraft({ silent = false } = {}) {
+    if (!silent) setStatus('info', 'Saving…');
     const btn = $('saveBtn'); btn.disabled = true;
     try {
-      const body = {
-        id: state.envelope.id,
-        title: state.envelope.title,
-        enforceOrder: !!state.envelope.enforceOrder,
-        recipients: (state.envelope.recipients || []).map((r, i) => ({
-          email: r.email, name: r.name, role: r.role || '', order: r.order || (i + 1)
-        })),
-        fields: (state.envelope.fields || []).filter(f => f.status === 'confirmed').map(f => ({
-          id: f.id, recipientId: f.recipientId, type: f.type, page: f.page,
-          x: f.x, y: f.y, width: f.width, height: f.height,
-          required: f.required !== false
-        }))
-      };
+      const recipients = (state.envelope.recipients || []).map((r, i) => ({
+        email: (r.email || '').trim(), name: (r.name || '').trim(),
+        role: r.role || '', order: r.order || (i + 1)
+      }));
+      const fields = (state.envelope.fields || []).map(f => ({
+        id: f.id, recipientId: f.recipientId, type: f.type, page: f.page,
+        x: f.x, y: f.y, width: f.width, height: f.height,
+        required: f.required !== false
+      }));
       const res = await fetch('/api/portal/envelopes/update-fields', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          id: state.envelope.id,
+          title: state.envelope.title,
+          enforceOrder: !!state.envelope.enforceOrder,
+          ccAdmin: state.envelope.ccAdmin !== false,
+          recipients,
+          fields
+        })
       });
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.message || 'Save failed.');
-      setStatus('ok', 'Draft saved.');
-    } catch (err) {
-      setStatus('err', err.message);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.message || `Save failed (HTTP ${res.status}).`);
+      if (!silent) setStatus('ok', 'Draft saved.');
     } finally {
       btn.disabled = false;
     }
   }
 
+  function validateBeforeSend() {
+    const env = state.envelope || {};
+    const recipients = env.recipients || [];
+    if (!recipients.length) return 'Add at least one recipient before sending.';
+    for (let i = 0; i < recipients.length; i++) {
+      const r = recipients[i];
+      const email = (r.email || '').trim();
+      const name = (r.name || '').trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return `Recipient ${i + 1}: valid email required.`;
+      if (!name) return `Recipient ${i + 1}: name required.`;
+    }
+    const fields = env.fields || [];
+    if (!fields.length) return 'Place at least one field on the document before sending.';
+    const assigned = new Set(fields.map(f => f.recipientId));
+    for (const r of recipients) {
+      if (!assigned.has(r.id)) return `Recipient "${r.name || r.email}" has no fields assigned. Place at least one field for them, or remove them.`;
+    }
+    return null;
+  }
+
   async function sendForSignature() {
+    const validationError = validateBeforeSend();
+    if (validationError) { setStatus('err', validationError); return; }
     if (!confirm('Send this envelope to all recipients? They will receive emails with signing links.')) return;
-    setStatus('info', 'Saving and sending…');
+
     const btn = $('sendBtn'); btn.disabled = true;
     try {
-      await saveDraft();
+      setStatus('info', 'Saving…');
+      try {
+        await saveDraft({ silent: true });
+      } catch (err) {
+        setStatus('err', 'Could not save before sending: ' + err.message);
+        return;
+      }
+      setStatus('info', 'Sending invitations…');
       const res = await fetch('/api/portal/envelopes/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: state.envelope.id })
       });
-      const d = await res.json();
-      if (!d.ok) throw new Error(d.message || 'Send failed.');
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) throw new Error(d.message || `Send failed (HTTP ${res.status}).`);
       setStatus('ok', 'Envelope sent. Redirecting…');
       setTimeout(() => { window.location.href = '/portal/admin/envelopes'; }, 1200);
     } catch (err) {
       setStatus('err', err.message);
+    } finally {
       btn.disabled = false;
     }
   }

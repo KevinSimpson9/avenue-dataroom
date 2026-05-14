@@ -8,7 +8,6 @@
 // Routes (relative to /api/portal/):
 //   GET  ""                    → render investor portal HTML (uses /portal rewrite)
 //   GET  "admin"               → render admin dashboard HTML
-//   GET  "admin/sign"          → render Lukas's signing HTML
 //   GET  "setup"               → render password-setup HTML (or expired page)
 //   GET  "me"                  → current session info
 //   GET  "roster"              → admin-only investor list
@@ -17,8 +16,6 @@
 //   POST "login"               → email + password sign-in
 //   POST "setup"               → save password
 //   POST "forgot"              → email a fresh setup/reset link
-//   POST "sign-as-lukas"       → Lukas signs Debtor + Guarantor
-//   POST "sign"                → investor counter-signs as Creditor
 //   POST "upload"              → upload a file to investor's folder
 //   POST "add-investor"        → admin: create investor + upload blank PDF
 //   POST "remove-investor"     → admin: soft-delete investor
@@ -48,13 +45,9 @@ import {
   clearSessionCookie,
   verifyPortalSession
 } from '../_portal-auth.js';
-import { signAsLukas, signAsInvestor } from '../_promissory-sign.js';
 import {
   sendSetupLink,
   sendLukasNewNoteNotice,
-  sendInvestorReadyToSign,
-  sendExecutedCopy,
-  sendKevinInvestorSignedNotice,
   sendEnvelopeInvite,
   sendEnvelopeExecutedCopy
 } from '../_portal-email.js';
@@ -66,7 +59,10 @@ import {
   getOrCreateEnvelopesFolder
 } from '../_envelopes-registry.js';
 import { flattenEnvelope, todayLong } from '../_envelope-sign.js';
-import { suggestFields, sha256Hex } from '../_envelope-suggest.js';
+
+function sha256Hex(bytes) {
+  return crypto.createHash('sha256').update(bytes).digest('hex');
+}
 
 // We handle body parsing ourselves so that multipart endpoints (upload,
 // add-investor) work alongside JSON endpoints in the same function.
@@ -79,14 +75,13 @@ export default async function handler(req, res) {
   const url = new URL(req.url, 'http://x');
   // Strip /api/portal/ or /portal/ prefix to get the sub-route
   const slug = url.pathname.replace(/^\/?api\/portal\/?/, '').replace(/^\/?portal\/?/, '').replace(/^\//, '').replace(/\/$/, '');
-  const route = slug; // e.g. "admin/sign", "roster", "login"
+  const route = slug; // e.g. "roster", "login", "envelopes/sign"
 
   try {
     if (req.method === 'GET') {
       if (route === '' || route === 'index') return renderInvestorPortal(req, res);
       if (route === 'sign-in') return renderSignInPage(req, res);
       if (route === 'admin') return renderAdminDashboard(req, res);
-      if (route === 'admin/sign') return renderAdminSign(req, res);
       if (route === 'admin/envelope') return renderAdminEnvelope(req, res);
       if (route === 'admin/envelopes') return renderAdminEnvelopesList(req, res);
       if (route === 'sign-envelope') return renderSignEnvelope(req, res);
@@ -105,14 +100,11 @@ export default async function handler(req, res) {
       if (route === 'login') return await postLogin(req, res);
       if (route === 'setup') return await postSetup(req, res);
       if (route === 'forgot') return await postForgot(req, res);
-      if (route === 'sign-as-lukas') return await postSignAsLukas(req, res);
-      if (route === 'sign') return await postSignAsInvestor(req, res);
       if (route === 'upload') return await postUpload(req, res);
       if (route === 'add-investor') return await postAddInvestor(req, res);
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
       if (route === 'resend-link') return await postResendLink(req, res);
       if (route === 'envelopes/create') return await postEnvelopeCreate(req, res);
-      if (route === 'envelopes/suggest') return await postEnvelopeSuggest(req, res);
       if (route === 'envelopes/update-fields') return await postEnvelopeUpdate(req, res);
       if (route === 'envelopes/send') return await postEnvelopeSend(req, res);
       if (route === 'envelopes/sign') return await postEnvelopeSign(req, res);
@@ -186,13 +178,6 @@ function renderAdminDashboard(req, res) {
   if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
   return servePublicFile(res, 'portal-admin.html');
-}
-
-function renderAdminSign(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
-  if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
-  return servePublicFile(res, 'portal-admin-sign.html');
 }
 
 async function getSetupPage(req, res) {
@@ -446,120 +431,6 @@ async function getFolder(req, res) {
   });
 }
 
-// ---------- Sign as Lukas ----------
-
-async function postSignAsLukas(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  if (normalizeEmail(session.email) !== normalizeEmail(LUKAS_EMAIL)) {
-    return res.status(403).json({ ok: false, message: 'Only Lukas Bondy can sign as Debtor & Guarantor.' });
-  }
-  const body = await readJsonBody(req);
-  const email = normalizeEmail(body?.email);
-  const typedSignature = String(body?.typedSignature || '').trim();
-  const agreed = !!body?.agreed;
-  if (!email) return res.status(400).json({ ok: false, message: 'Investor email is required.' });
-  if (!agreed) return res.status(400).json({ ok: false, message: 'You must acknowledge the terms.' });
-  if (typedSignature.toLowerCase() !== 'lukas bondy') {
-    return res.status(400).json({ ok: false, message: 'Typed signature must be "Lukas Bondy".' });
-  }
-
-  let registry, fileId, drive;
-  try { ({ registry, fileId, drive } = await loadRegistry()); }
-  catch (err) {
-    console.error('sign-as-lukas: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const entry = findByEmail(registry, email);
-  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
-  if (entry.deletedAt) return res.status(400).json({ ok: false, message: 'Investor has been removed.' });
-  if (entry.lukasSignedAt) return res.status(409).json({ ok: false, message: 'You have already signed this note.' });
-  if (!entry.blankPdfId) return res.status(400).json({ ok: false, message: 'No blank PDF on file for this investor.' });
-
-  let signedBytes;
-  try {
-    const blankBytes = await downloadFile(drive, entry.blankPdfId);
-    signedBytes = await signAsLukas(blankBytes, { typedSignature: 'Lukas Bondy', dateIso: new Date().toISOString() });
-  } catch (err) {
-    console.error('sign-as-lukas: signing failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not sign PDF.' });
-  }
-  let uploaded;
-  try {
-    uploaded = await uploadFile(drive, entry.folderId, 'lukas-signed-promissory-note.pdf', 'application/pdf', signedBytes);
-  } catch (err) {
-    console.error('sign-as-lukas: upload failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not save signed PDF to Drive.' });
-  }
-  updateEntry(registry, email, { lukasSignedAt: new Date().toISOString(), lukasSignedPdfId: uploaded.id });
-  await saveRegistry(drive, fileId, registry);
-
-  let setupToken = null;
-  if (!entry.passwordHash) setupToken = issueToken({ email: entry.email, purpose: 'setup' });
-  sendInvestorReadyToSign({
-    to: entry.email, name: entry.name, principal: entry.principal,
-    needsSetup: !entry.passwordHash, setupToken
-  }).catch(err => console.warn('sign-as-lukas: notify investor failed', err));
-  return res.status(200).json({ ok: true });
-}
-
-// ---------- Investor counter-sign ----------
-
-async function postSignAsInvestor(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'investor') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  const body = await readJsonBody(req);
-  const typedSignature = String(body?.typedSignature || '').trim();
-  const agreed = !!body?.agreed;
-  if (!agreed) return res.status(400).json({ ok: false, message: 'You must acknowledge the terms.' });
-  if (!typedSignature) return res.status(400).json({ ok: false, message: 'Typed signature is required.' });
-
-  let registry, fileId, drive;
-  try { ({ registry, fileId, drive } = await loadRegistry()); }
-  catch (err) {
-    console.error('sign: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const entry = findByEmail(registry, session.email);
-  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
-  if (entry.deletedAt) return res.status(403).json({ ok: false, message: 'Access revoked.' });
-  if (typedSignature.toLowerCase() !== String(entry.name || '').toLowerCase()) {
-    return res.status(400).json({ ok: false, message: 'Typed signature must match your full legal name on file.' });
-  }
-  if (entry.signedAt) return res.status(409).json({ ok: false, message: 'You have already signed this note.' });
-  if (!entry.lukasSignedAt || !entry.lukasSignedPdfId) {
-    return res.status(409).json({ ok: false, message: 'Your note is not yet ready to sign. Lukas must sign first.' });
-  }
-
-  let signedBytes;
-  try {
-    const lukasBytes = await downloadFile(drive, entry.lukasSignedPdfId);
-    signedBytes = await signAsInvestor(lukasBytes, { typedSignature: entry.name, dateIso: new Date().toISOString() });
-  } catch (err) {
-    console.error('sign: signing failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not sign PDF.' });
-  }
-  let uploaded;
-  try {
-    uploaded = await uploadFile(drive, entry.folderId, 'signed-promissory-note.pdf', 'application/pdf', signedBytes);
-  } catch (err) {
-    console.error('sign: upload failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not save executed PDF.' });
-  }
-  updateEntry(registry, entry.email, { signedAt: new Date().toISOString(), signedPdfId: uploaded.id });
-  await saveRegistry(drive, fileId, registry);
-
-  sendExecutedCopy({
-    to: entry.email, name: entry.name, principal: entry.principal,
-    pdfBytes: signedBytes, pdfFilename: `${slugify(entry.name)}-promissory-note-executed.pdf`,
-    bcc: KEVIN_EMAIL
-  }).catch(err => console.warn('sign: investor email failed', err));
-  sendKevinInvestorSignedNotice({
-    to: KEVIN_EMAIL, investorName: entry.name, principal: entry.principal
-  }).catch(err => console.warn('sign: Kevin notify failed', err));
-  return res.status(200).json({ ok: true });
-}
-
 // ---------- Upload (subscription docs) ----------
 
 async function postUpload(req, res) {
@@ -723,17 +594,6 @@ async function postResendLink(req, res) {
     if (!result.sent) return res.status(500).json({ ok: false, message: 'Email failed: ' + (result.reason || 'unknown') });
     return res.status(200).json({ ok: true });
   }
-  if (kind === 'ready-to-sign') {
-    if (!entry.lukasSignedAt) return res.status(409).json({ ok: false, message: 'Lukas has not signed this note yet.' });
-    let setupToken = null;
-    if (!entry.passwordHash) setupToken = issueToken({ email: entry.email, purpose: 'setup' });
-    const result = await sendInvestorReadyToSign({
-      to: entry.email, name: entry.name, principal: entry.principal,
-      needsSetup: !entry.passwordHash, setupToken
-    });
-    if (!result.sent) return res.status(500).json({ ok: false, message: 'Email failed: ' + (result.reason || 'unknown') });
-    return res.status(200).json({ ok: true });
-  }
   return res.status(400).json({ ok: false, message: 'Unknown kind.' });
 }
 
@@ -774,11 +634,9 @@ async function authorizeEnvelopeView(req, envelopeId, providedToken) {
   if (!env) return null;
 
   const session = verifyPortalSession(req);
-  if (session && session.role === 'admin') {
-    return { kind: 'admin', env, file, fileId, drive, session };
-  }
 
-  // Token-based access via magic link.
+  // Check recipient access first so a user who is BOTH an admin and a recipient
+  // on this envelope can actually sign. (Admin-only access falls through below.)
   if (providedToken) {
     const decoded = verifyToken(providedToken);
     if (decoded && decoded.purpose === 'sign-envelope' && typeof decoded.nonce === 'string') {
@@ -790,10 +648,13 @@ async function authorizeEnvelopeView(req, envelopeId, providedToken) {
     }
   }
 
-  // Session-based investor access — recipient identified by email.
-  if (session && session.role === 'investor') {
+  if (session) {
     const r = (env.recipients || []).find(x => normalizeEmail(x.email) === normalizeEmail(session.email));
     if (r) return { kind: 'recipient', env, file, fileId, drive, session, recipient: r };
+  }
+
+  if (session && session.role === 'admin') {
+    return { kind: 'admin', env, file, fileId, drive, session };
   }
 
   return null;
@@ -876,12 +737,12 @@ function serializeEnvelopeFull(env) {
     sentAt: env.sentAt,
     executedAt: env.executedAt,
     enforceOrder: !!env.enforceOrder,
+    ccAdmin: env.ccAdmin !== false,
     sourcePdfId: env.sourcePdfId,
     sourcePdfName: env.sourcePdfName,
     sourcePdfSha256: env.sourcePdfSha256,
     executedPdfId: env.executedPdfId,
     destinationFolderId: env.destinationFolderId,
-    aiSuggestions: env.aiSuggestions || null,
     recipients: env.recipients || [],
     fields: env.fields || []
   };
@@ -982,6 +843,9 @@ async function postEnvelopeCreate(req, res) {
   }
   const title = String(firstVal(fields.title) || '').trim() || 'Untitled envelope';
   const enforceOrder = String(firstVal(fields.enforceOrder) || '') === 'true';
+  // ccAdmin defaults to true if not supplied — admins almost always want a copy.
+  const ccAdminRaw = firstVal(fields.ccAdmin);
+  const ccAdmin = ccAdminRaw == null ? true : String(ccAdminRaw) !== 'false';
   let recipients = [];
   try {
     const raw = JSON.parse(String(firstVal(fields.recipients) || '[]'));
@@ -1044,7 +908,7 @@ async function postEnvelopeCreate(req, res) {
     executedPdfId: null,
     destinationFolderId: destFolderId,
     enforceOrder,
-    aiSuggestions: null,
+    ccAdmin,
     recipients: cleanRecipients.list,
     fields: []
   };
@@ -1085,48 +949,6 @@ function sanitizeRecipients(rawList) {
   return { list: out, errors };
 }
 
-async function postEnvelopeSuggest(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  const body = await readJsonBody(req);
-  const id = String(body?.id || '');
-
-  let envFile, fileId, drive;
-  try { ({ file: envFile, fileId, drive } = await loadEnvelopes()); }
-  catch (err) {
-    console.error('envelope/suggest: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const env = findEnvelope(envFile, id);
-  if (!env) return res.status(404).json({ ok: false, message: 'Envelope not found.' });
-  if (env.status !== 'draft') return res.status(400).json({ ok: false, message: 'Envelope is no longer a draft.' });
-
-  // Cache by sourcePdfSha256: if aiSuggestions already exist, return them.
-  if (env.aiSuggestions && env.aiSuggestions.length) {
-    return res.status(200).json({ ok: true, suggestions: env.aiSuggestions, cached: true });
-  }
-
-  let pdfBytes;
-  try { pdfBytes = await downloadFile(drive, env.sourcePdfId); }
-  catch (err) {
-    console.error('envelope/suggest: pdf download failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not load PDF.' });
-  }
-
-  let suggestions = [];
-  try { suggestions = await suggestFields(pdfBytes); }
-  catch (err) {
-    console.warn('envelope/suggest: AI call failed', err);
-    suggestions = [];
-  }
-
-  env.aiSuggestions = suggestions;
-  try { await saveEnvelopes(drive, fileId, envFile); }
-  catch (err) { console.warn('envelope/suggest: save failed', err); }
-
-  return res.status(200).json({ ok: true, suggestions, cached: false });
-}
-
 async function postEnvelopeUpdate(req, res) {
   const session = verifyPortalSession(req);
   if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
@@ -1142,6 +964,7 @@ async function postEnvelopeUpdate(req, res) {
 
   if (typeof body.title === 'string' && body.title.trim()) env.title = body.title.trim().slice(0, 200);
   if (typeof body.enforceOrder === 'boolean') env.enforceOrder = body.enforceOrder;
+  if (typeof body.ccAdmin === 'boolean') env.ccAdmin = body.ccAdmin;
 
   if (Array.isArray(body.recipients)) {
     // Update recipients in-place: preserve ids/nonces for ones with same email,
@@ -1248,15 +1071,34 @@ async function postEnvelopeSend(req, res) {
     return res.status(500).json({ ok: false, message: 'Could not update envelope.' });
   }
 
-  // Fire invites async; don't fail the request if email is down.
+  // Await invites so we can surface email failures to the admin. The envelope
+  // is already 'sent' at this point; we report which recipients didn't receive
+  // an email so the admin can resend manually.
+  const inviteResults = [];
   for (const r of recipientsToInvite) {
     if (!r) continue;
-    inviteRecipient(env, r, senderName).catch(err => console.warn('envelope/send: invite failed', err));
+    let result;
+    try { result = await inviteRecipient(env, r, senderName); }
+    catch (err) { result = { sent: false, reason: err.message }; }
+    if (result?.sent) r.invitedAt = env.sentAt;
+    inviteResults.push({ email: r.email, name: r.name, sent: !!result?.sent, reason: result?.reason || null });
+    if (!result?.sent) console.warn('envelope/send: invite failed for', r.email, result?.reason);
   }
-  // Stamp invitedAt eagerly (best-effort; saved on next mutation).
-  for (const r of recipientsToInvite) if (r) r.invitedAt = env.sentAt;
   try { await saveEnvelopes(drive, fileId, envFile); } catch {}
 
+  const failed = inviteResults.filter(x => !x.sent);
+  if (failed.length === inviteResults.length && inviteResults.length > 0) {
+    return res.status(200).json({
+      ok: false,
+      message: `Envelope was marked sent but no invitation emails went out. ${failed[0].reason || 'Email service error.'}`
+    });
+  }
+  if (failed.length > 0) {
+    return res.status(200).json({
+      ok: true,
+      warning: `Some invitations failed: ${failed.map(f => f.email).join(', ')}. Use "Resend invite" from the envelopes list.`
+    });
+  }
   return res.status(200).json({ ok: true });
 }
 
@@ -1281,13 +1123,19 @@ async function inviteRecipient(env, recipient, senderName) {
     purpose: 'sign-envelope',
     nonce: `${env.id}:${recipient.signNonce}`
   });
+  // BCC the admin (Kevin) on every invite if the envelope opts in. Skip the
+  // BCC if the recipient IS Kevin to avoid sending the same person two copies.
+  const bcc = env.ccAdmin !== false && normalizeEmail(recipient.email) !== normalizeEmail(KEVIN_EMAIL)
+    ? KEVIN_EMAIL
+    : undefined;
   return sendEnvelopeInvite({
     to: recipient.email,
     recipientName: recipient.name,
     envelopeTitle: env.title,
     senderName,
     token,
-    envelopeId: env.id
+    envelopeId: env.id,
+    bcc
   });
 }
 
@@ -1331,7 +1179,10 @@ async function postEnvelopeSign(req, res) {
     }
     const v = (submittedById.get(f.id) || '').trim();
     if (!v) {
-      if (f.required !== false) return res.status(400).json({ ok: false, message: `Please fill all required fields before signing.` });
+      if (f.required !== false) {
+        const label = f.type === 'signature' ? 'signature' : f.type === 'initials' ? 'initials' : f.type === 'text' ? 'text field' : f.type;
+        return res.status(400).json({ ok: false, message: `Please fill in the required ${label} on page ${f.page} before signing.` });
+      }
       continue;
     }
     f.filledValue = v.slice(0, 200);
