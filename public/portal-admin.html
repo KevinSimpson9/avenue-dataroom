@@ -538,7 +538,6 @@
       <td>
         <div class="actions-cell">
           ${inv.deletedAt ? '' : `<button class="row-btn primary" data-act="open" data-email="${escape(inv.email)}">Open folder →</button>`}
-          ${inv.state === 'awaiting-lukas' && me && me.email && me.email.toLowerCase() === LUKAS_EMAIL ? `<button class="row-btn" data-act="sign-as-lukas" data-email="${escape(inv.email)}">Sign now</button>` : ''}
           ${inv.deletedAt ? '' : `<button class="row-btn icon" data-act="resend" data-email="${escape(inv.email)}" title="Resend sign-in link" aria-label="Resend sign-in link">${MAIL_ICON}</button>`}
           ${inv.deletedAt ? '' : `<button class="row-btn icon danger" data-act="remove" data-email="${escape(inv.email)}" title="Remove investor" aria-label="Remove investor">${TRASH_ICON}</button>`}
         </div>
@@ -548,7 +547,6 @@
 
   function rowAction(act, email, btn) {
     if (act === 'open') { window.location.search = '?email=' + encodeURIComponent(email); return; }
-    if (act === 'sign-as-lukas') { window.location.href = '/portal/admin/sign?email=' + encodeURIComponent(email); return; }
     if (act === 'resend') return resendLink(email, btn);
     if (act === 'remove') return removeInvestor(email, btn);
   }
@@ -669,7 +667,7 @@
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Term</span><span style="color:white">${escape(String(inv.termMonths||''))} months</span></div>
           <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--muted)">Status</span><span style="color:white">${stateLabel}</span></div>
         </div>
-        ${isLukas && !inv.lukasSignedAt && blankFile ? `<a href="/portal/admin/sign?email=${encodeURIComponent(inv.email)}" class="add-btn" style="margin-top:14px;display:inline-block;text-decoration:none">Sign as Debtor &amp; Guarantor →</a>` : ''}
+        ${isLukas && !inv.lukasSignedAt && blankFile ? `<a href="/portal/admin/envelope" class="add-btn" style="margin-top:14px;display:inline-block;text-decoration:none">Create signing envelope →</a>` : ''}
       </div>
 
       ${preview ? `<div class="card">
@@ -822,9 +820,9 @@
       narr: `Lukas reviews the blank PDF and signs once. We overlay his signature and save it as <strong>lukas-signed-promissory-note.pdf</strong> in Jane's folder.`,
       mock: `
         <div class="wt-mock">
-          <div class="wt-mock-label">/portal/admin/sign</div>
+          <div class="wt-mock-label">/portal/admin/envelope</div>
           <div class="wt-pdf">PDF preview</div>
-          <span class="wt-sign-btn">Sign as Debtor &amp; Guarantor →</span>
+          <span class="wt-sign-btn">Place fields &amp; send →</span>
         </div>
         <div class="wt-mock wt-mock-badges">
           <span class="badge pending-lukas">Awaiting Lukas</span>

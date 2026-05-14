@@ -75,19 +75,19 @@ export async function sendSetupLink({ to, name, token }) {
   });
 }
 
-// ---------- 2. Lukas notification — new note awaiting signature ----------
+// ---------- 2. Lukas notification — new investor added ----------
 export async function sendLukasNewNoteNotice({ to, investorName, principal }) {
-  const url = `${baseUrl()}/portal/admin`;
+  const url = `${baseUrl()}/portal/admin/envelopes`;
   const amount = formatMoney(principal);
   return send({
     to,
-    subject: `New promissory note awaiting your signature — ${investorName}`,
+    subject: `New investor added — ${investorName}`,
     html: shell(`
       <p>Hi Lukas,</p>
-      <p>Kevin has added <strong>${investorName}</strong> (${amount}) to the investor portal. Open your admin dashboard to sign as Debtor and Guarantor.</p>
-      ${ctaButton('Open signature queue', url)}
+      <p>Kevin has added <strong>${investorName}</strong> (${amount}) to the investor portal. When the promissory note is ready, create an envelope, drop the signature fields where they belong, and send it.</p>
+      ${ctaButton('Open envelopes', url)}
     `),
-    text: `Hi Lukas,\n\nKevin has added ${investorName} (${amount}) to the investor portal. Open your admin dashboard to sign as Debtor and Guarantor:\n\n${url}`
+    text: `Hi Lukas,\n\nKevin has added ${investorName} (${amount}) to the investor portal. Create a signing envelope when the promissory note is ready:\n\n${url}`
   });
 }
 

@@ -8,7 +8,6 @@
 // Routes (relative to /api/portal/):
 //   GET  ""                    → render investor portal HTML (uses /portal rewrite)
 //   GET  "admin"               → render admin dashboard HTML
-//   GET  "admin/sign"          → render Lukas's signing HTML
 //   GET  "setup"               → render password-setup HTML (or expired page)
 //   GET  "me"                  → current session info
 //   GET  "roster"              → admin-only investor list
@@ -17,8 +16,6 @@
 //   POST "login"               → email + password sign-in
 //   POST "setup"               → save password
 //   POST "forgot"              → email a fresh setup/reset link
-//   POST "sign-as-lukas"       → Lukas signs Debtor + Guarantor
-//   POST "sign"                → investor counter-signs as Creditor
 //   POST "upload"              → upload a file to investor's folder
 //   POST "add-investor"        → admin: create investor + upload blank PDF
 //   POST "remove-investor"     → admin: soft-delete investor
@@ -48,13 +45,9 @@ import {
   clearSessionCookie,
   verifyPortalSession
 } from '../_portal-auth.js';
-import { signAsLukas, signAsInvestor } from '../_promissory-sign.js';
 import {
   sendSetupLink,
   sendLukasNewNoteNotice,
-  sendInvestorReadyToSign,
-  sendExecutedCopy,
-  sendKevinInvestorSignedNotice,
   sendEnvelopeInvite,
   sendEnvelopeExecutedCopy
 } from '../_portal-email.js';
@@ -82,14 +75,13 @@ export default async function handler(req, res) {
   const url = new URL(req.url, 'http://x');
   // Strip /api/portal/ or /portal/ prefix to get the sub-route
   const slug = url.pathname.replace(/^\/?api\/portal\/?/, '').replace(/^\/?portal\/?/, '').replace(/^\//, '').replace(/\/$/, '');
-  const route = slug; // e.g. "admin/sign", "roster", "login"
+  const route = slug; // e.g. "roster", "login", "envelopes/sign"
 
   try {
     if (req.method === 'GET') {
       if (route === '' || route === 'index') return renderInvestorPortal(req, res);
       if (route === 'sign-in') return renderSignInPage(req, res);
       if (route === 'admin') return renderAdminDashboard(req, res);
-      if (route === 'admin/sign') return renderAdminSign(req, res);
       if (route === 'admin/envelope') return renderAdminEnvelope(req, res);
       if (route === 'admin/envelopes') return renderAdminEnvelopesList(req, res);
       if (route === 'sign-envelope') return renderSignEnvelope(req, res);
@@ -108,8 +100,6 @@ export default async function handler(req, res) {
       if (route === 'login') return await postLogin(req, res);
       if (route === 'setup') return await postSetup(req, res);
       if (route === 'forgot') return await postForgot(req, res);
-      if (route === 'sign-as-lukas') return await postSignAsLukas(req, res);
-      if (route === 'sign') return await postSignAsInvestor(req, res);
       if (route === 'upload') return await postUpload(req, res);
       if (route === 'add-investor') return await postAddInvestor(req, res);
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
@@ -188,13 +178,6 @@ function renderAdminDashboard(req, res) {
   if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
   if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
   return servePublicFile(res, 'portal-admin.html');
-}
-
-function renderAdminSign(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session) { res.writeHead(302, { Location: '/portal/sign-in' }); return res.end(); }
-  if (session.role !== 'admin') { res.writeHead(302, { Location: '/portal' }); return res.end(); }
-  return servePublicFile(res, 'portal-admin-sign.html');
 }
 
 async function getSetupPage(req, res) {
@@ -448,120 +431,6 @@ async function getFolder(req, res) {
   });
 }
 
-// ---------- Sign as Lukas ----------
-
-async function postSignAsLukas(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  if (normalizeEmail(session.email) !== normalizeEmail(LUKAS_EMAIL)) {
-    return res.status(403).json({ ok: false, message: 'Only Lukas Bondy can sign as Debtor & Guarantor.' });
-  }
-  const body = await readJsonBody(req);
-  const email = normalizeEmail(body?.email);
-  const typedSignature = String(body?.typedSignature || '').trim();
-  const agreed = !!body?.agreed;
-  if (!email) return res.status(400).json({ ok: false, message: 'Investor email is required.' });
-  if (!agreed) return res.status(400).json({ ok: false, message: 'You must acknowledge the terms.' });
-  if (typedSignature.toLowerCase() !== 'lukas bondy') {
-    return res.status(400).json({ ok: false, message: 'Typed signature must be "Lukas Bondy".' });
-  }
-
-  let registry, fileId, drive;
-  try { ({ registry, fileId, drive } = await loadRegistry()); }
-  catch (err) {
-    console.error('sign-as-lukas: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const entry = findByEmail(registry, email);
-  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
-  if (entry.deletedAt) return res.status(400).json({ ok: false, message: 'Investor has been removed.' });
-  if (entry.lukasSignedAt) return res.status(409).json({ ok: false, message: 'You have already signed this note.' });
-  if (!entry.blankPdfId) return res.status(400).json({ ok: false, message: 'No blank PDF on file for this investor.' });
-
-  let signedBytes;
-  try {
-    const blankBytes = await downloadFile(drive, entry.blankPdfId);
-    signedBytes = await signAsLukas(blankBytes, { typedSignature: 'Lukas Bondy', dateIso: new Date().toISOString() });
-  } catch (err) {
-    console.error('sign-as-lukas: signing failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not sign PDF.' });
-  }
-  let uploaded;
-  try {
-    uploaded = await uploadFile(drive, entry.folderId, 'lukas-signed-promissory-note.pdf', 'application/pdf', signedBytes);
-  } catch (err) {
-    console.error('sign-as-lukas: upload failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not save signed PDF to Drive.' });
-  }
-  updateEntry(registry, email, { lukasSignedAt: new Date().toISOString(), lukasSignedPdfId: uploaded.id });
-  await saveRegistry(drive, fileId, registry);
-
-  let setupToken = null;
-  if (!entry.passwordHash) setupToken = issueToken({ email: entry.email, purpose: 'setup' });
-  sendInvestorReadyToSign({
-    to: entry.email, name: entry.name, principal: entry.principal,
-    needsSetup: !entry.passwordHash, setupToken
-  }).catch(err => console.warn('sign-as-lukas: notify investor failed', err));
-  return res.status(200).json({ ok: true });
-}
-
-// ---------- Investor counter-sign ----------
-
-async function postSignAsInvestor(req, res) {
-  const session = verifyPortalSession(req);
-  if (!session || session.role !== 'investor') return res.status(401).json({ ok: false, message: 'Unauthorized' });
-  const body = await readJsonBody(req);
-  const typedSignature = String(body?.typedSignature || '').trim();
-  const agreed = !!body?.agreed;
-  if (!agreed) return res.status(400).json({ ok: false, message: 'You must acknowledge the terms.' });
-  if (!typedSignature) return res.status(400).json({ ok: false, message: 'Typed signature is required.' });
-
-  let registry, fileId, drive;
-  try { ({ registry, fileId, drive } = await loadRegistry()); }
-  catch (err) {
-    console.error('sign: registry load failed', err);
-    return res.status(500).json({ ok: false, message: 'Server not configured.' });
-  }
-  const entry = findByEmail(registry, session.email);
-  if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
-  if (entry.deletedAt) return res.status(403).json({ ok: false, message: 'Access revoked.' });
-  if (typedSignature.toLowerCase() !== String(entry.name || '').toLowerCase()) {
-    return res.status(400).json({ ok: false, message: 'Typed signature must match your full legal name on file.' });
-  }
-  if (entry.signedAt) return res.status(409).json({ ok: false, message: 'You have already signed this note.' });
-  if (!entry.lukasSignedAt || !entry.lukasSignedPdfId) {
-    return res.status(409).json({ ok: false, message: 'Your note is not yet ready to sign. Lukas must sign first.' });
-  }
-
-  let signedBytes;
-  try {
-    const lukasBytes = await downloadFile(drive, entry.lukasSignedPdfId);
-    signedBytes = await signAsInvestor(lukasBytes, { typedSignature: entry.name, dateIso: new Date().toISOString() });
-  } catch (err) {
-    console.error('sign: signing failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not sign PDF.' });
-  }
-  let uploaded;
-  try {
-    uploaded = await uploadFile(drive, entry.folderId, 'signed-promissory-note.pdf', 'application/pdf', signedBytes);
-  } catch (err) {
-    console.error('sign: upload failed', err);
-    return res.status(500).json({ ok: false, message: 'Could not save executed PDF.' });
-  }
-  updateEntry(registry, entry.email, { signedAt: new Date().toISOString(), signedPdfId: uploaded.id });
-  await saveRegistry(drive, fileId, registry);
-
-  sendExecutedCopy({
-    to: entry.email, name: entry.name, principal: entry.principal,
-    pdfBytes: signedBytes, pdfFilename: `${slugify(entry.name)}-promissory-note-executed.pdf`,
-    bcc: KEVIN_EMAIL
-  }).catch(err => console.warn('sign: investor email failed', err));
-  sendKevinInvestorSignedNotice({
-    to: KEVIN_EMAIL, investorName: entry.name, principal: entry.principal
-  }).catch(err => console.warn('sign: Kevin notify failed', err));
-  return res.status(200).json({ ok: true });
-}
-
 // ---------- Upload (subscription docs) ----------
 
 async function postUpload(req, res) {
@@ -722,17 +591,6 @@ async function postResendLink(req, res) {
       token = issueToken({ email: entry.email, purpose: 'reset', nonce });
     }
     const result = await sendSetupLink({ to: entry.email, name: entry.name, token });
-    if (!result.sent) return res.status(500).json({ ok: false, message: 'Email failed: ' + (result.reason || 'unknown') });
-    return res.status(200).json({ ok: true });
-  }
-  if (kind === 'ready-to-sign') {
-    if (!entry.lukasSignedAt) return res.status(409).json({ ok: false, message: 'Lukas has not signed this note yet.' });
-    let setupToken = null;
-    if (!entry.passwordHash) setupToken = issueToken({ email: entry.email, purpose: 'setup' });
-    const result = await sendInvestorReadyToSign({
-      to: entry.email, name: entry.name, principal: entry.principal,
-      needsSetup: !entry.passwordHash, setupToken
-    });
     if (!result.sent) return res.status(500).json({ ok: false, message: 'Email failed: ' + (result.reason || 'unknown') });
     return res.status(200).json({ ok: true });
   }
