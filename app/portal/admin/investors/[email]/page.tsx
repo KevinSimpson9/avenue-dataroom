@@ -2,8 +2,12 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/current-user';
 import { PortalShell } from '@/components/ui/PortalShell';
+import { DocumentList } from '@/components/documents/DocumentList';
+import { UploadDocument } from '@/components/documents/UploadDocument';
 import {
   findByEmail,
+  getDrive,
+  listFolderFiles,
   loadRegistry,
   type InvestorEntry,
 } from '@/lib/drive/registry';
@@ -22,6 +26,10 @@ export default async function InvestorDetailPage({
   const entry = findByEmail(registry, decodeURIComponent(email), { includeDeleted: true });
   if (!entry || entry.role !== 'investor') notFound();
   const investor = entry as InvestorEntry;
+
+  const files = investor.folderId
+    ? await listFolderFiles(getDrive(), investor.folderId)
+    : [];
 
   return (
     <PortalShell role="admin" email={session.email}>
@@ -53,6 +61,21 @@ export default async function InvestorDetailPage({
           </dl>
         </section>
       </div>
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-xl text-brand-fg">Documents</h2>
+            <p className="mt-1 text-xs text-brand-muted">
+              Files in this investor&apos;s Drive folder. They can view and download these.
+            </p>
+          </div>
+          {investor.folderId ? <UploadDocument investorEmail={investor.email} /> : null}
+        </div>
+        <div className="mt-4">
+          <DocumentList files={files} adminFor={investor.email} />
+        </div>
+      </section>
     </PortalShell>
   );
 }

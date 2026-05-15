@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import { requireInvestor } from '@/lib/auth/current-user';
 import { PortalShell } from '@/components/ui/PortalShell';
 import {
   findByEmail,
+  getDrive,
+  listFolderFiles,
   loadRegistry,
   type InvestorEntry,
 } from '@/lib/drive/registry';
@@ -12,6 +15,10 @@ export default async function InvestorDashboardPage() {
   const session = await requireInvestor('/portal/dashboard');
   const registry = await loadRegistry();
   const entry = findByEmail(registry, session.email) as InvestorEntry | null;
+
+  const recentDocs = entry?.folderId
+    ? (await listFolderFiles(getDrive(), entry.folderId)).slice(0, 5)
+    : [];
 
   return (
     <PortalShell role="investor" email={session.email}>
@@ -37,12 +44,45 @@ export default async function InvestorDashboardPage() {
         </section>
 
         <section className="rounded-xl border border-brand-line bg-white p-6">
-          <h2 className="font-display text-lg text-brand-fg">Signing status</h2>
-          <p className="mt-4 text-sm text-brand-muted">
-            Documents to sign will appear here as they&apos;re sent.
-          </p>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg text-brand-fg">Recent documents</h2>
+            <Link
+              href="/portal/documents"
+              className="text-xs text-brand-accent hover:underline"
+            >
+              View all →
+            </Link>
+          </div>
+          {recentDocs.length === 0 ? (
+            <p className="mt-4 text-sm text-brand-muted">No documents shared yet.</p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {recentDocs.map((f) => (
+                <li key={f.id} className="flex items-center justify-between text-sm">
+                  <a
+                    href={`/api/documents/${encodeURIComponent(f.id)}?inline=1`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-brand-fg hover:text-brand-accent"
+                  >
+                    {f.name}
+                  </a>
+                  <span className="ml-3 shrink-0 text-xs text-brand-muted">
+                    {new Date(f.createdTime).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
+
+      <section className="mt-10 rounded-xl border border-brand-line bg-white p-6">
+        <h2 className="font-display text-lg text-brand-fg">Signing status</h2>
+        <p className="mt-4 text-sm text-brand-muted">
+          Documents awaiting your signature will appear here when sent.
+        </p>
+      </section>
     </PortalShell>
   );
 }
