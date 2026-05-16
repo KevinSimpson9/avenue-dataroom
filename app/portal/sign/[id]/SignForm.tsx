@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { SignaturePad } from '@/components/envelope/SignaturePad';
 import type { EnvelopeStatus, FieldType } from '@/lib/drive/envelopes';
 
 interface FieldStub {
@@ -210,6 +211,9 @@ function FieldInput({
       </p>
     );
   }
+  if (field.type === 'signature') {
+    return <SignatureField value={value} onChange={onChange} required={field.required} />;
+  }
   const label = field.type[0].toUpperCase() + field.type.slice(1);
   return (
     <label className="block">
@@ -222,10 +226,75 @@ function FieldInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={field.required}
-        className={`mt-1 w-full rounded-md border border-brand-line bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-accent focus:outline-none focus:ring-1 focus:ring-brand-accent ${
-          field.type === 'signature' ? 'font-display italic text-lg' : ''
-        }`}
+        className="mt-1 w-full rounded-md border border-brand-line bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-accent focus:outline-none focus:ring-1 focus:ring-brand-accent"
       />
     </label>
+  );
+}
+
+function SignatureField({
+  value,
+  onChange,
+  required,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required: boolean;
+}) {
+  const isDrawn = value.startsWith('data:image/');
+  const [mode, setMode] = useState<'draw' | 'type'>(isDrawn ? 'draw' : 'type');
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-brand-muted">
+          Signature{required ? '' : ' (optional)'}
+        </span>
+        <div className="flex gap-1 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('draw');
+              if (!isDrawn) onChange('');
+            }}
+            className={`rounded-md px-2 py-1 ${
+              mode === 'draw'
+                ? 'bg-brand-accent text-white'
+                : 'border border-brand-line text-brand-fg hover:bg-brand-bg'
+            }`}
+          >
+            Draw
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('type');
+              if (isDrawn) onChange('');
+            }}
+            className={`rounded-md px-2 py-1 ${
+              mode === 'type'
+                ? 'bg-brand-accent text-white'
+                : 'border border-brand-line text-brand-fg hover:bg-brand-bg'
+            }`}
+          >
+            Type
+          </button>
+        </div>
+      </div>
+      <div className="mt-2">
+        {mode === 'draw' ? (
+          <SignaturePad value={isDrawn ? value : null} onChange={(v) => onChange(v || '')} />
+        ) : (
+          <input
+            type="text"
+            value={isDrawn ? '' : value}
+            onChange={(e) => onChange(e.target.value)}
+            required={required}
+            className="w-full rounded-md border border-brand-line bg-white px-3 py-3 font-display text-2xl italic shadow-sm focus:border-brand-accent focus:outline-none focus:ring-1 focus:ring-brand-accent"
+            placeholder="Type your name"
+          />
+        )}
+      </div>
+    </div>
   );
 }

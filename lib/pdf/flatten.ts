@@ -26,10 +26,32 @@ export async function flattenEnvelope(
     const page = pages[(f.page || 1) - 1];
     if (!page) continue;
 
+    const value = String(f.filledValue);
+
+    // Drawn signatures arrive as data:image/png;base64,... — embed and scale
+    // into the field's bbox preserving aspect ratio.
+    if (f.type === 'signature' && value.startsWith('data:image/')) {
+      const commaIdx = value.indexOf(',');
+      if (commaIdx === -1) continue;
+      const isJpeg = value.startsWith('data:image/jpeg');
+      const bytes = Buffer.from(value.slice(commaIdx + 1), 'base64');
+      const img = isJpeg ? await doc.embedJpg(bytes) : await doc.embedPng(bytes);
+      const scale = Math.min(f.width / img.width, f.height / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      page.drawImage(img, {
+        x: f.x + (f.width - drawW) / 2,
+        y: f.y + (f.height - drawH) / 2,
+        width: drawW,
+        height: drawH,
+      });
+      continue;
+    }
+
     const isSig = f.type === 'signature';
     const font = isSig ? script : plain;
     const color = isSig ? SIG_COLOR : PLAIN_COLOR;
-    const text = String(f.filledValue);
+    const text = value;
 
     const targetSize = isSig
       ? Math.min(Math.max(f.height * 0.85, 10), 22)

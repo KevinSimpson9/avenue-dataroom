@@ -387,8 +387,12 @@ async function doSign(
     return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
   }
 
+  // Signature data URLs can be tens of KB; other field values stay short.
   const submittedById = new Map<string, string>(
-    submitted.map((s) => [s.id, String(s.value ?? '').slice(0, 200)])
+    submitted.map((s) => {
+      const raw = String(s.value ?? '');
+      return [s.id, raw.startsWith('data:image/') ? raw.slice(0, 2_000_000) : raw.slice(0, 200)];
+    })
   );
 
   let outcome: {
@@ -430,7 +434,8 @@ async function doSign(
         fld.filledAt = now;
         continue;
       }
-      const v = (submittedById.get(fld.id) || '').trim();
+      const raw = submittedById.get(fld.id) || '';
+      const v = raw.startsWith('data:image/') ? raw : raw.trim();
       if (!v) {
         if (fld.required !== false) {
           throw new HttpError(
@@ -440,7 +445,7 @@ async function doSign(
         }
         continue;
       }
-      fld.filledValue = v.slice(0, 200);
+      fld.filledValue = v;
       fld.filledAt = now;
     }
 
