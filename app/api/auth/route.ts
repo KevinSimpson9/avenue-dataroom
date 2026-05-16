@@ -16,6 +16,7 @@ import {
   clearSessionCookie,
 } from '@/lib/auth/session';
 import { sendResetLink } from '@/lib/email/resend';
+import { appendAudit } from '@/lib/drive/audit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -73,6 +74,12 @@ async function signin(email: string, password: string) {
     return jsonError('Account is not active.', 403);
   }
   await setSessionCookie({ email: entry.email, role: entry.role });
+  await appendAudit({
+    actorEmail: entry.email,
+    actorRole: entry.role,
+    action: 'auth.signin',
+    target: entry.email,
+  });
   return NextResponse.json({
     ok: true,
     role: entry.role,

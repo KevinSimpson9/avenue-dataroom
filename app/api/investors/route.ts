@@ -12,6 +12,7 @@ import {
 } from '@/lib/drive/registry';
 import { issueToken } from '@/lib/auth/tokens';
 import { sendSetupLink } from '@/lib/email/resend';
+import { appendAudit } from '@/lib/drive/audit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,7 +25,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   const body = await req.json().catch(() => null);
   const parsed = createInvestorSchema.safeParse(body);
@@ -77,6 +78,14 @@ export async function POST(req: Request) {
 
   const token = issueToken({ email: data.email, purpose: 'setup', nonce });
   await sendSetupLink({ to: data.email, name: data.name, token });
+
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: 'investor.create',
+    target: data.email,
+    meta: { name: data.name, principal: data.principal },
+  });
 
   return NextResponse.json({ ok: true, investor: newEntry });
 }

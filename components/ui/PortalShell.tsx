@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { BRANDING } from '@/lib/config/branding';
 import type { Role } from '@/lib/auth/session';
 import { LogoutButton } from './LogoutButton';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   href: string;
@@ -13,12 +14,17 @@ const adminNav: NavItem[] = [
   { href: '/portal/admin', label: 'Dashboard' },
   { href: '/portal/admin/investors', label: 'Investors' },
   { href: '/portal/admin/envelopes', label: 'Envelopes' },
+  { href: '/portal/admin/messages', label: 'Messages' },
+  { href: '/portal/admin/updates', label: 'Updates' },
+  { href: '/portal/admin/audit', label: 'Audit' },
 ];
 
 const investorNav: NavItem[] = [
   { href: '/portal/dashboard', label: 'Dashboard' },
   { href: '/portal/documents', label: 'Documents' },
   { href: '/portal/envelopes', label: 'Signing' },
+  { href: '/portal/messages', label: 'Messages' },
+  { href: '/portal/updates', label: 'Updates' },
 ];
 
 export function PortalShell({
@@ -51,6 +57,7 @@ export function PortalShell({
                 {item.label}
               </Link>
             ))}
+            <NotificationBell />
             <span className="hidden text-xs text-brand-muted sm:inline">{email}</span>
             <LogoutButton />
           </nav>

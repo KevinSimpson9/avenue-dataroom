@@ -30,6 +30,7 @@ import {
 } from '@/lib/envelope-helpers';
 import { flattenEnvelope, todayLong } from '@/lib/pdf/flatten';
 import { sendEnvelopeExecutedCopy } from '@/lib/email/resend';
+import { appendAudit } from '@/lib/drive/audit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -308,6 +309,14 @@ async function doSend(id: string) {
     });
   }
 
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: 'envelope.send',
+    target: id,
+    meta: { title: outcome.value.envelope.title, invited: okEmails.length },
+  });
+
   const failed = inviteResults.filter((r) => !r.sent);
   if (failed.length === inviteResults.length && inviteResults.length > 0) {
     return NextResponse.json({
@@ -325,7 +334,7 @@ async function doSend(id: string) {
 }
 
 async function doVoid(id: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const result = await updateEnvelopes((f) => {
     const env = findEnvelope(f, id);
     if (!env) throw new HttpError('Envelope not found.', 404);
@@ -336,6 +345,12 @@ async function doVoid(id: string) {
   if (result instanceof HttpError) {
     return NextResponse.json({ ok: false, message: result.message }, { status: result.status });
   }
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: 'envelope.void',
+    target: id,
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -521,6 +536,14 @@ async function doSign(
       bcc: bcc.length ? bcc : undefined,
     }).catch(() => {});
   }
+
+  await appendAudit({
+    actorEmail: o.recipient.email,
+    actorRole: 'investor',
+    action: o.allSigned ? 'envelope.executed' : 'envelope.signed',
+    target: id,
+    meta: { title: o.env.title, recipientId: o.recipient.id },
+  });
 
   return NextResponse.json({ ok: true, allSigned: o.allSigned });
 }

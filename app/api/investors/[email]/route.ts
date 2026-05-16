@@ -11,6 +11,7 @@ import {
 } from '@/lib/drive/registry';
 import { issueToken } from '@/lib/auth/tokens';
 import { sendSetupLink, sendResetLink } from '@/lib/email/resend';
+import { appendAudit } from '@/lib/drive/audit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,7 +35,7 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { email } = await params;
   const body = await req.json().catch(() => null);
   const parsed = updateInvestorSchema.safeParse(body);
@@ -54,11 +55,18 @@ export async function PATCH(req: Request, { params }: Params) {
     return r;
   });
   if (!found) return NextResponse.json({ ok: false, message: 'Not found' }, { status: 404 });
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: 'investor.update',
+    target: decoded,
+    meta: parsed.data,
+  });
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { email } = await params;
   const decoded = decodeURIComponent(email);
   let found = false;
@@ -72,6 +80,12 @@ export async function DELETE(_req: Request, { params }: Params) {
     return r;
   });
   if (!found) return NextResponse.json({ ok: false, message: 'Not found' }, { status: 404 });
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: 'investor.remove',
+    target: decoded,
+  });
   return NextResponse.json({ ok: true });
 }
 
@@ -81,7 +95,7 @@ export async function DELETE(_req: Request, { params }: Params) {
  * Rotates the relevant nonce and re-emails the link.
  */
 export async function POST(req: Request, { params }: Params) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { email } = await params;
   const body = (await req.json().catch(() => ({}))) as { action?: string };
   const decoded = decodeURIComponent(email);
@@ -126,5 +140,12 @@ export async function POST(req: Request, { params }: Params) {
     ? await sendResetLink({ to: outcome.value.email, name: outcome.value.name, token })
     : await sendSetupLink({ to: outcome.value.email, name: outcome.value.name, token });
 
+  await appendAudit({
+    actorEmail: session.email,
+    actorRole: 'admin',
+    action: useReset ? 'investor.send-reset' : 'investor.send-setup',
+    target: outcome.value.email,
+    meta: { sent: result.sent },
+  });
   return NextResponse.json({ ok: true, sent: result.sent, reason: result.reason });
 }
