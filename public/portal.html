@@ -353,7 +353,7 @@
 
     // Subscription documents
     html += `<div class="card">
-      <h2>Subscription documents</h2>
+      <h2>Your documents</h2>
       <p class="lead">Upload your accreditation letter, ID, wire confirmation, or anything else Kevin requests. Files are saved directly to your Drive folder.</p>
       <form id="uploadForm">
         <label class="upload-zone" id="uploadZone" for="uploadInput">
@@ -367,15 +367,139 @@
       <ul class="doc-list" id="docList"></ul>
     </div>`;
 
-    html += `<div class="dataroom-footer">
-      <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
-    </div>`;
+    // Shared deal documents (populated async).
+    html += `<div id="dealDocsSection"></div>`;
+
+    // Deal updates (populated async).
+    html += `<div id="updatesSection"></div>`;
+
+    // Messages with Kevin (populated async).
+    html += `<div id="messagesSection"></div>`;
 
     $body.innerHTML = html;
 
     wireUpload(inv);
     renderDocList(files);
     loadMyEnvelopes();
+    loadDealDocs();
+    loadUpdates();
+    loadMessages();
+  }
+
+  async function loadDealDocs() {
+    const host = document.getElementById('dealDocsSection');
+    if (!host) return;
+    try {
+      const r = await fetchWithTimeout('/api/portal/deal-docs', {}, 9000);
+      if (!r.ok) return;
+      const d = await r.json();
+      const docs = (d && d.docs) || [];
+      if (!docs.length) { host.innerHTML = ''; return; }
+      host.innerHTML = `<div class="card">
+        <h2>Deal documents</h2>
+        <p class="lead">The full investor package for The Avenue at Fountain Hills.</p>
+        <ul class="doc-list">${docs.map(doc => doc.available ? `
+          <li>
+            <div class="doc-tag">DOC</div>
+            <div class="doc-info">
+              <a class="doc-name" href="${escape(doc.url)}" target="_blank" rel="noopener">${escape(doc.label)}</a>
+              <div class="doc-meta">${escape(doc.blurb || '')}</div>
+            </div>
+          </li>` : `
+          <li style="opacity:.55">
+            <div class="doc-tag">—</div>
+            <div class="doc-info">
+              <span class="doc-name" style="color:var(--muted)">${escape(doc.label)}</span>
+              <div class="doc-meta">Coming soon</div>
+            </div>
+          </li>`).join('')}</ul>
+      </div>`;
+    } catch (err) { console.warn('deal-docs load failed:', err); }
+  }
+
+  async function loadUpdates() {
+    const host = document.getElementById('updatesSection');
+    if (!host) return;
+    try {
+      const r = await fetchWithTimeout('/api/portal/updates', {}, 9000);
+      if (!r.ok) return;
+      const d = await r.json();
+      const updates = (d && d.updates) || [];
+      if (!updates.length) { host.innerHTML = ''; return; }
+      host.innerHTML = `<div class="card">
+        <h2>Updates</h2>
+        <p class="lead">The latest from Kevin on The Avenue.</p>
+        ${updates.map(u => `
+          <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.08)">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+              <div style="color:white;font-weight:600">${escape(u.title || 'Update')}</div>
+              <div style="color:var(--muted);font-size:12px;white-space:nowrap">${fmtDate(u.createdAt)}</div>
+            </div>
+            ${u.body ? `<div style="color:var(--text);font-size:14px;margin-top:6px;white-space:pre-wrap">${escape(u.body)}</div>` : ''}
+          </div>`).join('')}
+      </div>`;
+    } catch (err) { console.warn('updates load failed:', err); }
+  }
+
+  async function loadMessages() {
+    const host = document.getElementById('messagesSection');
+    if (!host) return;
+    try {
+      const r = await fetchWithTimeout('/api/portal/messages', {}, 9000);
+      if (!r.ok) return;
+      const d = await r.json();
+      const messages = (d && d.messages) || [];
+      host.innerHTML = `<div class="card">
+        <h2>Messages</h2>
+        <p class="lead">Questions for Kevin? Send a message — he'll reply here and by email.</p>
+        <div id="msgThread" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">${renderMsgThread(messages)}</div>
+        <form id="msgForm" style="display:flex;gap:10px;align-items:flex-end">
+          <textarea id="msgInput" rows="2" placeholder="Write a message…" style="flex:1;padding:11px 13px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical"></textarea>
+          <button type="submit" class="sign-btn" id="msgSend" style="width:auto;padding:12px 20px;margin:0">Send</button>
+        </form>
+        <div class="err" id="msgErr"></div>
+      </div>`;
+      wireMessageForm();
+    } catch (err) { console.warn('messages load failed:', err); }
+  }
+
+  function renderMsgThread(messages) {
+    if (!messages.length) return '<div style="color:var(--muted);font-style:italic;font-size:13px">No messages yet. Start the conversation below.</div>';
+    return messages.map(m => {
+      const mine = m.from === 'investor';
+      const align = mine ? 'flex-end' : 'flex-start';
+      const bg = mine ? 'rgba(212,162,74,0.16)' : 'rgba(255,255,255,0.06)';
+      const who = mine ? 'You' : 'Kevin';
+      return `<div style="align-self:${align};max-width:80%">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;text-align:${mine?'right':'left'}">${who} · ${fmtDate(m.createdAt)}</div>
+        <div style="background:${bg};border:1px solid var(--hairline);border-radius:12px;padding:10px 13px;font-size:14px;white-space:pre-wrap">${escape(m.body)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function wireMessageForm() {
+    const form = document.getElementById('msgForm');
+    const input = document.getElementById('msgInput');
+    const errEl = document.getElementById('msgErr');
+    const btn = document.getElementById('msgSend');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = (input.value || '').trim();
+      errEl.textContent = '';
+      if (!body) return;
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const res = await fetch('/api/portal/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body })
+        });
+        const data = await res.json();
+        if (data.ok) { input.value = ''; loadMessages(); }
+        else errEl.textContent = data.message || 'Could not send.';
+      } catch { errEl.textContent = 'Network error. Try again.'; }
+      finally { btn.disabled = false; btn.textContent = 'Send'; }
+    });
   }
 
   async function loadMyEnvelopes() {

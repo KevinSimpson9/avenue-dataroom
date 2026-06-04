@@ -190,6 +190,57 @@ export async function sendEnvelopeExecutedCopy({ to, envelopeTitle, pdfBytes, pd
   });
 }
 
+// ---------- 8. New message from an investor → notify the admin ----------
+export async function sendNewMessageToAdmin({ to, investorName, investorEmail, snippet }) {
+  const who = investorName || investorEmail || 'An investor';
+  const url = `${baseUrl()}/portal/admin?email=${encodeURIComponent(investorEmail || '')}`;
+  return send({
+    to,
+    subject: `New message from ${who}`,
+    html: shell(`
+      <p>Kevin —</p>
+      <p><strong>${escapeHtml(who)}</strong> sent you a message in the investor portal:</p>
+      <blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet || '')}</blockquote>
+      ${ctaButton('Open the conversation', url)}
+    `),
+    text: `Kevin — ${who} sent you a message in the investor portal:\n\n"${snippet || ''}"\n\nReply here: ${url}`
+  });
+}
+
+// ---------- 9. Admin reply → notify the investor ----------
+export async function sendAdminReplyToInvestor({ to, investorName, snippet }) {
+  const greeting = investorName ? `Hello ${String(investorName).split(' ')[0]},` : 'Hello,';
+  const url = `${baseUrl()}/portal`;
+  return send({
+    to,
+    subject: 'New message from Kevin · The Avenue',
+    html: shell(`
+      <p>${greeting}</p>
+      <p>Kevin replied to you in your investor portal:</p>
+      <blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet || '')}</blockquote>
+      ${ctaButton('Open your portal', url)}
+    `),
+    text: `${greeting}\n\nKevin replied to you in your investor portal:\n\n"${snippet || ''}"\n\nOpen your portal: ${url}`
+  });
+}
+
+// ---------- 10. New deal update → notify investor(s) ----------
+export async function sendUpdateNotice({ to, title, snippet, bcc }) {
+  const url = `${baseUrl()}/portal`;
+  return send({
+    to,
+    bcc,
+    subject: `New update · The Avenue${title ? ` — ${title}` : ''}`,
+    html: shell(`
+      <p>Hello,</p>
+      <p>There's a new update in your investor portal${title ? `: <strong>${escapeHtml(title)}</strong>` : ''}.</p>
+      ${snippet ? `<blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet)}</blockquote>` : ''}
+      ${ctaButton('Read the update', url)}
+    `),
+    text: `Hello,\n\nThere's a new update in your investor portal${title ? `: ${title}` : ''}.\n\n${snippet || ''}\n\nRead it here: ${url}`
+  });
+}
+
 // ---------- Helpers ----------
 function formatMoney(amount) {
   const n = Number(amount);

@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Avenue · Data Room</title>
-<meta name="description" content="The Avenue at Fountain Hills — Investor Data Room. Authorized access only.">
+<title>The Avenue · Fountain Hills</title>
+<meta name="description" content="The Avenue at Fountain Hills.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <meta property="og:title" content="The Avenue at Fountain Hills">
-<meta property="og:description" content="Investor Data Room — Authorized access only.">
+<meta property="og:description" content="The Avenue at Fountain Hills.">
 <meta property="og:image" content="https://dataroom.theavenuefh.com/og-image.png">
 <meta property="og:url" content="https://dataroom.theavenuefh.com/">
 <meta property="og:type" content="website">
@@ -21,207 +21,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
-<style>
-  /* ---- NDA modal ---- */
-  .nda-modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(8, 22, 26, 0.78);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: none;
-    align-items: flex-start;
-    justify-content: center;
-    z-index: 1000;
-    padding: 32px 16px;
-    overflow-y: auto;
-  }
-  .nda-modal-backdrop.open { display: flex; }
-  .nda-modal {
-    width: 100%;
-    max-width: 760px;
-    background: linear-gradient(160deg, var(--teal-deep) 0%, var(--teal) 100%);
-    border: 1px solid var(--teal-border);
-    border-radius: 18px;
-    padding: 32px 30px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    animation: fadeUp 0.4s ease-out;
-    margin: auto;
-  }
-  .nda-modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; gap: 16px; }
-  .nda-modal-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--cream);
-    line-height: 1.2;
-  }
-  .nda-modal-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
-  .nda-close {
-    background: transparent; border: 1px solid var(--teal-border);
-    color: var(--text-muted);
-    width: 34px; height: 34px;
-    border-radius: 8px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
-    flex-shrink: 0;
-  }
-  .nda-close:hover { background: rgba(255,255,255,0.06); color: var(--text-light); }
-  .nda-scroll {
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid var(--teal-border);
-    border-radius: 10px;
-    padding: 16px 20px;
-    height: 220px;
-    overflow-y: auto;
-    font-size: 12.5px;
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.82);
-    margin-bottom: 22px;
-  }
-  .nda-scroll h3 { font-size: 12px; font-weight: 600; color: var(--cream); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.6px; }
-  .nda-scroll p { margin-bottom: 10px; }
-  .nda-scroll strong { color: var(--cream); font-weight: 500; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-grid .full { grid-column: 1 / -1; }
-  .field-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin-bottom: 5px;
-  }
-  .field-input {
-    width: 100%;
-    padding: 10px 12px;
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid var(--teal-border);
-    border-radius: 8px;
-    color: var(--text-light);
-    font-size: 14px;
-    font-family: inherit;
-    transition: border-color 0.15s;
-  }
-  .field-input:focus { outline: none; border-color: var(--gold); }
-  .field-input::placeholder { color: var(--text-dim); }
-  .agree-row {
-    display: flex; align-items: flex-start; gap: 10px;
-    margin: 18px 0 6px;
-    padding: 12px 14px;
-    background: rgba(212, 162, 74, 0.06);
-    border: 1px solid rgba(212, 162, 74, 0.25);
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .agree-row input[type="checkbox"] {
-    margin-top: 2px; width: 16px; height: 16px;
-    accent-color: var(--gold); cursor: pointer; flex-shrink: 0;
-  }
-  .agree-row label { font-size: 13px; color: var(--text-light); line-height: 1.45; cursor: pointer; }
-  .signature-row { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--teal-border); }
-  .signature-row .field-input {
-    font-family: 'Cormorant Garamond', serif;
-    font-style: italic;
-    font-size: 18px;
-    color: var(--cream);
-  }
-  .sign-btn {
-    width: 100%;
-    margin-top: 18px;
-    padding: 15px;
-    background: var(--gold);
-    color: var(--ink);
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-  }
-  .sign-btn:hover:not(:disabled) { background: var(--gold-hover); }
-  .sign-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-  .form-error {
-    margin-top: 12px; padding: 10px 14px;
-    background: rgba(220, 80, 80, 0.12);
-    border: 1px solid rgba(220, 80, 80, 0.35);
-    border-radius: 8px;
-    color: #ffb4b4;
-    font-size: 13px;
-    display: none;
-  }
-  .form-error.show { display: block; }
-  .nda-success { text-align: center; padding: 16px 8px; }
-  .nda-success .check {
-    width: 56px; height: 56px; border-radius: 50%;
-    background: rgba(212, 162, 74, 0.18);
-    display: inline-flex; align-items: center; justify-content: center;
-    margin-bottom: 18px;
-    color: var(--gold);
-  }
-  .nda-success h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 26px;
-    color: var(--cream);
-    margin-bottom: 8px;
-  }
-  .nda-success p { color: var(--text-muted); font-size: 14px; margin-bottom: 14px; }
-  .password-reveal {
-    margin: 18px auto 24px;
-    padding: 18px 22px;
-    background: rgba(212, 162, 74, 0.10);
-    border: 1px solid rgba(212, 162, 74, 0.45);
-    border-radius: 10px;
-    max-width: 380px;
-  }
-  .password-reveal-label {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
-    color: var(--gold); margin-bottom: 6px;
-  }
-  .password-reveal-value {
-    font-family: monospace;
-    font-size: 22px;
-    color: var(--cream);
-    letter-spacing: 1px;
-    word-break: break-all;
-  }
-  .password-copy-btn {
-    margin-top: 10px;
-    padding: 6px 14px;
-    background: rgba(212, 162, 74, 0.15);
-    border: 1px solid rgba(212, 162, 74, 0.45);
-    color: var(--gold);
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .password-copy-btn:hover { background: rgba(212, 162, 74, 0.25); }
-  .reference-line { font-family: monospace; font-size: 11px; color: var(--text-dim); margin-top: 18px; }
-
-  .request-nda-btn {
-    margin-top: 14px;
-    width: 100%;
-    padding: 12px 16px;
-    background: transparent;
-    border: 1px solid var(--teal-border);
-    border-radius: 10px;
-    color: var(--text-light);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    font-family: inherit;
-  }
-  .request-nda-btn:hover { border-color: var(--gold); background: rgba(212, 162, 74, 0.06); }
-
-  @media (max-width: 600px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .nda-modal { padding: 22px 18px; }
-  }
-</style>
 </head>
 <body>
 
@@ -243,8 +42,8 @@
       </svg>
     </div>
 
-    <h1 class="gate-title">Data Room</h1>
-    <p class="gate-subtitle">Enter the access password to view documents</p>
+    <h1 class="gate-title">The Avenue</h1>
+    <p class="gate-subtitle">Enter the access password to continue</p>
 
     <form id="gateForm">
       <div class="password-wrap">
@@ -258,162 +57,19 @@
         </button>
       </div>
       <div class="error-msg" id="errorMsg"></div>
-      <button type="submit" class="unlock-btn" id="unlockBtn">Unlock Data Room</button>
-      <button type="button" class="get-password-btn" id="getPasswordBtn">Need access? Get password →</button>
-      <button type="button" class="forgot-link" id="forgotToggle">Forgot password?</button>
-      <div class="forgot-form" id="forgotForm" hidden>
-        <p class="forgot-help">Enter the email you used to sign the NDA. We'll resend the access password.</p>
-        <input type="email" class="forgot-email" id="forgotEmail" placeholder="you@example.com" autocomplete="email">
-        <button type="button" class="forgot-submit" id="forgotSubmit">Send password</button>
-        <div class="forgot-msg" id="forgotMsg"></div>
-      </div>
-
+      <button type="submit" class="unlock-btn" id="unlockBtn">Continue</button>
     </form>
 
     <div class="nda-card">
-      <p class="nda-text">This material is confidential and available only to authorized individuals who have executed a Non-Disclosure Agreement (NDA). By entering the access password, you acknowledge that you are bound by the terms of your NDA and that unauthorized disclosure, copying, or distribution is strictly prohibited.</p>
-      <button type="button" class="request-nda-btn" id="openNdaBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-        </svg>
-        Don't have access? Sign NDA for access
-      </button>
+      <p class="nda-text">This offering is closed to new investors. Existing investors can access their documents and updates through the <a href="/portal/sign-in" style="color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(212,162,74,0.4)">investor portal</a>.</p>
     </div>
 
-    <div class="gate-footer">Confidential · Accredited Investors Only</div>
-  </div>
-</div>
-
-<!-- ============ NDA MODAL ============ -->
-<div class="nda-modal-backdrop" id="ndaBackdrop" role="dialog" aria-modal="true" aria-labelledby="ndaModalTitle">
-  <div class="nda-modal" id="ndaModal">
-
-    <!-- Step 1: Form -->
-    <div id="ndaFormStep">
-      <div class="nda-modal-header">
-        <div>
-          <div class="nda-modal-title" id="ndaModalTitle">Sign NDA for Access</div>
-          <div class="nda-modal-sub">Review the agreement, sign electronically, and you'll receive the access password.</div>
-        </div>
-        <button type="button" class="nda-close" id="ndaCloseBtn" aria-label="Close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-
-      <div class="nda-scroll" id="ndaText">
-        <p><strong>16740 E. Ave of the Fountains LLC</strong> ("Disclosing Party"), an Arizona limited liability company with a mailing address at 213 Debbie Ln, Corbin, KY 40701, and the undersigned ("Receiving Party").</p>
-
-        <h3>Purpose</h3>
-        <p>The parties plan to discuss a potential investment opportunity in connection with the real estate development project known as "The Avenue at Fountain Hills" (the "Project"). In the course of these discussions, it may become necessary for the parties to exchange proprietary or confidential information. The purpose of this Agreement is to protect the confidential nature of such information.</p>
-
-        <h3>Definition of Proprietary Information</h3>
-        <p>The term "Proprietary Information" means information of a confidential nature disclosed to the designated Authorized Representative. It includes but is not limited to (i) research and development; (ii) trade secrets; (iii) proprietary technical, marketing, operating, performance, cost, pricing, know-how, business and process information; (iv) communications plans, creative ideas, designs, client preferences and policies; (v) algorithms, computer processing systems, techniques, methodologies, formulae, processes, compilations of information, drawings, proposals, job notes, reports, records and specifications; (vi) information relating to 16740 E. Ave of the Fountains LLC, AK Capital Investments, their respective principals, members, managers, subsidiaries, affiliates, partners, and the property located at or near 16740 E. Avenue of the Fountains, Fountain Hills, Arizona, including any related development entities and equity structures; (vii) project documentation, including property appraisals, architectural and engineering plans, build budgets and cost estimates, municipal permits and approvals, town entitlements, term sheets, promissory notes, unit reservation agreements, purchase and sale agreements, and developer track record materials; and (viii) financial statements, projections, models, return analyses including IRR and NPV scenarios, capital stack and equity structures, credit valuations, exit scenarios, and pricing data related to the Project or any other real estate development activities of the Disclosing Party.</p>
-
-        <h3>Exceptions</h3>
-        <p>Proprietary Information does not include information that: (a) is publicly available without breach of this Agreement, (b) is lawfully obtained from a non-confidential source, (c) was already in the receiving party's possession at time of disclosure, (d) is disclosed non-confidentially with the disclosing party's permission, (e) is independently developed without use of Proprietary Information, or (f) is disclosed with prior written consent.</p>
-
-        <h3>Restrictions</h3>
-        <p>Each party agrees that, for three (3) years from the date of disclosure, it will: (a) not use Proprietary Information for purposes other than evaluating the business relationship, (b) not disclose to employees without a reasonable need and notice of confidentiality, (c) not disclose to any third party without prior written consent, and (d) maintain reasonably adequate procedures to ensure compliance. The receiving party will protect Proprietary Information with the same degree of care it uses for its own, but in no event less than reasonable care.</p>
-
-        <h3>Remedies</h3>
-        <p>Unauthorized disclosure causes material harm; monetary damages may be inadequate. The disclosing party may seek injunctive or equitable relief in addition to other legal remedies. Neither party shall be liable for punitive, exemplary, special, indirect, incidental or consequential damages.</p>
-
-        <h3>Term &amp; Survival</h3>
-        <p>This Agreement continues for two (2) years or until terminated by written notice (effective 30 days following receipt). Non-disclosure obligations survive termination for an additional three (3) years.</p>
-
-        <h3>Information Return</h3>
-        <p>All Proprietary Information will be returned or destroyed upon written request, except where backup-storage retention makes destruction infeasible (in which case confidentiality protections continue until destruction in the normal course).</p>
-
-        <h3>Intellectual Property</h3>
-        <p>All rights in Proprietary Information are retained by the disclosing party. Nothing herein grants any license, title, or interest to the receiving party.</p>
-
-        <h3>Governing Law &amp; Waiver of Jury Trial</h3>
-        <p>This Agreement is governed by the laws of the State of Arizona without regard to choice-of-law provisions. The parties waive any right to a trial by jury.</p>
-
-        <h3>Limitation of Liability</h3>
-        <p>IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR CONSEQUENTIAL, SPECIAL, INDIRECT, INCIDENTAL, PUNITIVE OR EXEMPLARY DAMAGES, COSTS, EXPENSES OR LOSSES (INCLUDING LOST PROFITS AND OPPORTUNITY COSTS).</p>
-
-        <h3>Entirety</h3>
-        <p>This Agreement constitutes the entire agreement between the parties regarding disclosure of Proprietary Information and supersedes all previous communications. No modification is effective unless in writing and signed by both parties.</p>
-
-        <h3>Disclosing Party — Authorized Representative</h3>
-        <p><strong>16740 E. Ave of the Fountains LLC</strong><br>
-        Kevin Simpson · Co-Developer / Investor Relations<br>
-        213 Debbie Ln, Corbin, KY 40701 · (606) 304-0607<br>
-        Kevin@AKCapital.fund</p>
-      </div>
-
-      <form id="ndaForm">
-        <div class="form-grid">
-          <div class="full">
-            <label class="field-label" for="name">Full Legal Name *</label>
-            <input class="field-input" type="text" id="name" name="name" required autocomplete="name" placeholder="John Hancock">
-          </div>
-          <div>
-            <label class="field-label" for="email">Email *</label>
-            <input class="field-input" type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
-          </div>
-          <div>
-            <label class="field-label" for="phone">Phone</label>
-            <input class="field-input" type="tel" id="phone" name="phone" autocomplete="tel" placeholder="Optional">
-          </div>
-          <div>
-            <label class="field-label" for="entity">Firm / Entity</label>
-            <input class="field-input" type="text" id="entity" name="entity" autocomplete="organization" placeholder="Optional">
-          </div>
-          <div>
-            <label class="field-label" for="title">Title</label>
-            <input class="field-input" type="text" id="title" name="title" placeholder="Optional">
-          </div>
-          <div class="full">
-            <label class="field-label" for="address">Mailing Address *</label>
-            <input class="field-input" type="text" id="address" name="address" required autocomplete="street-address" placeholder="Street, City, State, ZIP">
-          </div>
-        </div>
-
-        <label class="agree-row">
-          <input type="checkbox" id="agreed" required>
-          <label for="agreed">I have read the Mutual Non-Disclosure Agreement above in full and agree to be bound by its terms. Typing my name below constitutes my electronic signature.</label>
-        </label>
-
-        <div class="signature-row">
-          <label class="field-label" for="typedSignature">Typed Signature * <span style="text-transform:none; letter-spacing:0; color:var(--text-dim);">(type your full legal name exactly as entered above)</span></label>
-          <input class="field-input" type="text" id="typedSignature" name="typedSignature" required autocomplete="off" placeholder="John Hancock">
-        </div>
-
-        <button type="submit" class="sign-btn" id="signBtn">Sign NDA &amp; Receive Password</button>
-
-        <div class="form-error" id="formError"></div>
-      </form>
-    </div>
-
-    <!-- Step 2: Success + password reveal -->
-    <div id="ndaSuccessStep" style="display:none;">
-      <div class="nda-success">
-        <div class="check">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <h2>NDA Recorded</h2>
-        <p>We've just emailed you the access password and a signed PDF copy of your NDA. Save that email — if you forget the password later, it's in your inbox.</p>
-
-        <div class="password-reveal">
-          <div class="password-reveal-label">Your Access Password</div>
-          <div class="password-reveal-value" id="passwordReveal">—</div>
-          <button type="button" class="password-copy-btn" id="copyPwBtn">Copy</button>
-        </div>
-
-        <p>Use this password on the prior screen to enter the data room.</p>
-        <button type="button" class="sign-btn" id="continueBtn" style="max-width: 280px; margin-top: 8px;">Continue to Data Room</button>
-        <div class="reference-line" id="referenceLine"></div>
-      </div>
-    </div>
-
+    <div class="gate-footer">Confidential · By Invitation Only</div>
   </div>
 </div>
 
 <script>
-  // --- Show/hide data-room password ---
+  // --- Show/hide password ---
   document.getElementById('passwordToggle').addEventListener('click', () => {
     const input = document.getElementById('passwordInput');
     const btn = document.getElementById('passwordToggle');
@@ -425,7 +81,7 @@
       : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   });
 
-  // --- Password gate (original behavior) ---
+  // --- Password gate ---
   document.getElementById('gateForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('unlockBtn');
@@ -452,166 +108,9 @@
     } catch (err) {
       error.textContent = 'Unable to verify. Please try again.';
     } finally {
-      btn.textContent = 'Unlock Data Room';
+      btn.textContent = 'Continue';
       btn.disabled = false;
     }
-  });
-
-  // --- NDA modal open/close ---
-  const backdrop = document.getElementById('ndaBackdrop');
-  const openBtn = document.getElementById('openNdaBtn');
-  const closeBtn = document.getElementById('ndaCloseBtn');
-  const formStep = document.getElementById('ndaFormStep');
-  const successStep = document.getElementById('ndaSuccessStep');
-
-  function openModal() {
-    backdrop.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    // Reset to form step in case they previously signed and reopened
-    formStep.style.display = 'block';
-    successStep.style.display = 'none';
-  }
-  function closeModal() {
-    backdrop.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  openBtn.addEventListener('click', openModal);
-  document.getElementById('getPasswordBtn').addEventListener('click', openModal);
-
-  // --- Forgot password ---
-  const forgotToggle = document.getElementById('forgotToggle');
-  const forgotForm = document.getElementById('forgotForm');
-  const forgotEmail = document.getElementById('forgotEmail');
-  const forgotSubmit = document.getElementById('forgotSubmit');
-  const forgotMsg = document.getElementById('forgotMsg');
-  forgotToggle.addEventListener('click', () => {
-    const showing = !forgotForm.hidden;
-    forgotForm.hidden = showing;
-    if (!showing) setTimeout(() => forgotEmail.focus(), 50);
-  });
-  forgotSubmit.addEventListener('click', async () => {
-    const email = (forgotEmail.value || '').trim();
-    forgotMsg.textContent = '';
-    forgotMsg.className = 'forgot-msg';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      forgotMsg.textContent = 'Please enter a valid email address.';
-      forgotMsg.classList.add('error');
-      return;
-    }
-    forgotSubmit.disabled = true;
-    forgotSubmit.textContent = 'Sending...';
-    try {
-      const res = await fetch('/api/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (data.ok && data.registered) {
-        forgotMsg.textContent = 'Password sent — check your email.';
-        forgotMsg.classList.add('success');
-      } else if (data.ok && data.registered === false) {
-        forgotMsg.textContent = 'No NDA on file for that email — opening NDA now.';
-        const prefill = document.getElementById('email');
-        if (prefill) prefill.value = email;
-        setTimeout(openModal, 700);
-      } else {
-        forgotMsg.textContent = data.message || 'Could not send password. Try again.';
-        forgotMsg.classList.add('error');
-      }
-    } catch (err) {
-      forgotMsg.textContent = 'Network error. Please try again.';
-      forgotMsg.classList.add('error');
-    } finally {
-      forgotSubmit.disabled = false;
-      forgotSubmit.textContent = 'Send password';
-    }
-  });
-
-  closeBtn.addEventListener('click', closeModal);
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && backdrop.classList.contains('open')) closeModal(); });
-
-  // --- NDA form submit ---
-  const ndaForm = document.getElementById('ndaForm');
-  const errorBox = document.getElementById('formError');
-  const signBtn = document.getElementById('signBtn');
-  const nameInput = document.getElementById('name');
-  const sigInput = document.getElementById('typedSignature');
-
-  // Live-mirror name into signature field as user types
-  nameInput.addEventListener('input', () => {
-    sigInput.value = nameInput.value;
-  });
-
-  ndaForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    errorBox.classList.remove('show');
-    errorBox.textContent = '';
-    signBtn.disabled = true;
-    signBtn.textContent = 'Recording…';
-
-    const payload = {
-      name: nameInput.value.trim(),
-      email: document.getElementById('email').value.trim(),
-      phone: document.getElementById('phone').value.trim(),
-      entity: document.getElementById('entity').value.trim(),
-      title: document.getElementById('title').value.trim(),
-      address: document.getElementById('address').value.trim(),
-      typedSignature: sigInput.value.trim(),
-      agreed: document.getElementById('agreed').checked,
-    };
-
-    try {
-      const res = await fetch('/api/sign-nda', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (data.ok) {
-        document.getElementById('passwordReveal').textContent = data.password || '(see Kevin)';
-        document.getElementById('referenceLine').textContent = 'Reference: ' + (data.reference || '');
-        formStep.style.display = 'none';
-        successStep.style.display = 'block';
-      } else {
-        errorBox.textContent = data.message || 'Could not record NDA. Please try again.';
-        errorBox.classList.add('show');
-        signBtn.disabled = false;
-        signBtn.textContent = 'Sign NDA & Receive Password';
-      }
-    } catch (err) {
-      errorBox.textContent = 'Network error. Please try again.';
-      errorBox.classList.add('show');
-      signBtn.disabled = false;
-      signBtn.textContent = 'Sign NDA & Receive Password';
-    }
-  });
-
-  // --- Copy password & continue buttons ---
-  document.getElementById('copyPwBtn').addEventListener('click', async () => {
-    const pw = document.getElementById('passwordReveal').textContent;
-    try {
-      await navigator.clipboard.writeText(pw);
-      const btn = document.getElementById('copyPwBtn');
-      const orig = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(() => { btn.textContent = orig; }, 1500);
-    } catch (e) {
-      // Fallback: select the text
-      const range = document.createRange();
-      range.selectNodeContents(document.getElementById('passwordReveal'));
-      window.getSelection().removeAllRanges();
-      window.getSelection().addRange(range);
-    }
-  });
-
-  document.getElementById('continueBtn').addEventListener('click', () => {
-    closeModal();
-    document.getElementById('passwordInput').focus();
-    // Pre-fill so they don't have to type
-    const pw = document.getElementById('passwordReveal').textContent;
-    if (pw && pw !== '—') document.getElementById('passwordInput').value = pw;
   });
 </script>
 

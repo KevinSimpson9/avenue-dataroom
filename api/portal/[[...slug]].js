@@ -49,8 +49,28 @@ import {
   sendSetupLink,
   sendLukasNewNoteNotice,
   sendEnvelopeInvite,
-  sendEnvelopeExecutedCopy
+  sendEnvelopeExecutedCopy,
+  sendNewMessageToAdmin,
+  sendAdminReplyToInvestor,
+  sendUpdateNotice
 } from '../_portal-email.js';
+import { listDealDocsForPortal } from '../_deal-docs.js';
+import {
+  loadUpdates,
+  saveUpdates,
+  addUpdate,
+  removeUpdate,
+  updatesForInvestor,
+  allUpdates
+} from '../_portal-updates.js';
+import {
+  loadMessages,
+  saveMessages,
+  getThread,
+  appendMessage,
+  markRead,
+  threadSummaries
+} from '../_portal-messages.js';
 import {
   loadEnvelopes,
   saveEnvelopes,
@@ -93,11 +113,17 @@ export default async function handler(req, res) {
       if (route === 'envelopes/get') return await getEnvelope(req, res);
       if (route === 'envelopes/pdf') return await getEnvelopePdf(req, res);
       if (route === 'my-envelopes') return await getMyEnvelopes(req, res);
+      if (route === 'deal-docs') return await getDealDocs(req, res);
+      if (route === 'updates') return await getUpdates(req, res);
+      if (route === 'messages') return await getMessages(req, res);
       if (route === 'logout') return doLogout(req, res);
       if (route === 'enter-data-room') return enterDataRoom(req, res);
     }
     if (req.method === 'POST') {
       if (route === 'login') return await postLogin(req, res);
+      if (route === 'messages') return await postMessage(req, res);
+      if (route === 'updates') return await postUpdate(req, res);
+      if (route === 'updates/delete') return await postUpdateDelete(req, res);
       if (route === 'setup') return await postSetup(req, res);
       if (route === 'forgot') return await postForgot(req, res);
       if (route === 'upload') return await postUpload(req, res);
@@ -254,6 +280,189 @@ function enterDataRoom(req, res) {
     `avenue_session=${cookieValue}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`);
   res.writeHead(302, { Location: '/room' });
   return res.end();
+}
+
+// ---------- Deal documents (shared, read-only) ----------
+
+async function getDealDocs(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  return res.status(200).json({ ok: true, docs: listDealDocsForPortal() });
+}
+
+// ---------- Updates ----------
+
+async function getUpdates(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  let file;
+  try { ({ file } = await loadUpdates()); }
+  catch (err) {
+    console.error('updates: load failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not load updates.' });
+  }
+  const updates = session.role === 'admin' ? allUpdates(file) : updatesForInvestor(file, session.email);
+  return res.status(200).json({ ok: true, updates });
+}
+
+async function postUpdate(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const title = String(body?.title || '').trim();
+  const text = String(body?.body || '').trim();
+  const audienceRaw = String(body?.audience || 'all').trim();
+  if (!title && !text) return res.status(400).json({ ok: false, message: 'Add a title or a message.' });
+
+  let updFile, updFileId, drive;
+  try { ({ file: updFile, fileId: updFileId, drive } = await loadUpdates()); }
+  catch (err) {
+    console.error('updates: load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+
+  // Resolve audience + recipient list for the email notice.
+  let registry;
+  try { ({ registry } = await loadRegistry()); } catch (err) { console.warn('updates: registry load failed', err); registry = { entries: [] }; }
+  let audience = 'all';
+  let recipients = [];
+  if (audienceRaw && audienceRaw !== 'all') {
+    const target = normalizeEmail(audienceRaw);
+    const entry = findByEmail(registry, target);
+    if (!entry || entry.role !== 'investor') return res.status(400).json({ ok: false, message: 'Unknown investor for this update.' });
+    audience = entry.email;
+    recipients = [entry.email];
+  } else {
+    recipients = registry.entries.filter(e => e.role === 'investor' && !e.deletedAt).map(e => e.email);
+  }
+
+  const entry = addUpdate(updFile, { title, body: text, audience, createdBy: session.email });
+  try { await saveUpdates(drive, updFileId, updFile); }
+  catch (err) {
+    console.error('updates: save failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not save update.' });
+  }
+
+  // Notify (fire-and-forget). BCC keeps recipients private when sending to many.
+  if (recipients.length) {
+    const snippet = (text || title).slice(0, 280);
+    if (recipients.length === 1) {
+      sendUpdateNotice({ to: recipients[0], title, snippet })
+        .catch(err => console.warn('updates: notice failed', err));
+    } else {
+      sendUpdateNotice({ to: KEVIN_EMAIL, title, snippet, bcc: recipients })
+        .catch(err => console.warn('updates: notice failed', err));
+    }
+  }
+
+  return res.status(200).json({ ok: true, update: entry });
+}
+
+async function postUpdateDelete(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const id = String(body?.id || '');
+  if (!id) return res.status(400).json({ ok: false, message: 'Update id is required.' });
+  let updFile, updFileId, drive;
+  try { ({ file: updFile, fileId: updFileId, drive } = await loadUpdates()); }
+  catch (err) { return res.status(500).json({ ok: false, message: 'Server not configured.' }); }
+  const removed = removeUpdate(updFile, id);
+  if (!removed) return res.status(404).json({ ok: false, message: 'Update not found.' });
+  try { await saveUpdates(drive, updFileId, updFile); }
+  catch (err) {
+    console.error('updates/delete: save failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not save.' });
+  }
+  return res.status(200).json({ ok: true });
+}
+
+// ---------- Messages (investor <-> admin) ----------
+
+async function nameForEmail(registry, email) {
+  const entry = findByEmail(registry, email, { includeDeleted: true });
+  return entry?.name || (email ? email.split('@')[0] : '');
+}
+
+async function getMessages(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+
+  let msgFile, msgFileId, drive;
+  try { ({ file: msgFile, fileId: msgFileId, drive } = await loadMessages()); }
+  catch (err) {
+    console.error('messages: load failed', err);
+    return res.status(500).json({ ok: false, message: 'Could not load messages.' });
+  }
+
+  if (session.role === 'admin') {
+    const requested = normalizeEmail((new URL(req.url, 'http://x').searchParams.get('email')) || '');
+    if (!requested) {
+      // Inbox summaries, enriched with investor names.
+      let registry; try { ({ registry } = await loadRegistry()); } catch { registry = { entries: [] }; }
+      const summaries = threadSummaries(msgFile).map(s => ({
+        ...s,
+        name: (findByEmail(registry, s.email, { includeDeleted: true })?.name) || s.email
+      }));
+      return res.status(200).json({ ok: true, threads: summaries });
+    }
+    const thread = getThread(msgFile, requested);
+    if (markRead(msgFile, requested, 'admin')) {
+      try { await saveMessages(drive, msgFileId, msgFile); } catch (err) { console.warn('messages: markRead save failed', err); }
+    }
+    let registry; try { ({ registry } = await loadRegistry()); } catch { registry = { entries: [] }; }
+    return res.status(200).json({
+      ok: true,
+      email: requested,
+      name: await nameForEmail(registry, requested),
+      messages: thread ? thread.messages : []
+    });
+  }
+
+  // Investor: their own thread.
+  const thread = getThread(msgFile, session.email);
+  if (markRead(msgFile, session.email, 'investor')) {
+    try { await saveMessages(drive, msgFileId, msgFile); } catch (err) { console.warn('messages: markRead save failed', err); }
+  }
+  return res.status(200).json({ ok: true, email: session.email, messages: thread ? thread.messages : [] });
+}
+
+async function postMessage(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const text = String(body?.body || '').trim();
+  if (!text) return res.status(400).json({ ok: false, message: 'Message cannot be empty.' });
+
+  let msgFile, msgFileId, drive;
+  try { ({ file: msgFile, fileId: msgFileId, drive } = await loadMessages()); }
+  catch (err) {
+    console.error('messages: load failed', err);
+    return res.status(500).json({ ok: false, message: 'Server not configured.' });
+  }
+  let registry; try { ({ registry } = await loadRegistry()); } catch { registry = { entries: [] }; }
+
+  if (session.role === 'admin') {
+    const targetEmail = normalizeEmail(body?.email);
+    if (!targetEmail) return res.status(400).json({ ok: false, message: 'Recipient email is required.' });
+    const entry = findByEmail(registry, targetEmail);
+    if (!entry || entry.role !== 'investor') return res.status(404).json({ ok: false, message: 'Investor not found.' });
+    const msg = appendMessage(msgFile, targetEmail, { from: 'admin', authorEmail: session.email, body: text });
+    try { await saveMessages(drive, msgFileId, msgFile); }
+    catch (err) { console.error('messages: save failed', err); return res.status(500).json({ ok: false, message: 'Could not send message.' }); }
+    sendAdminReplyToInvestor({ to: entry.email, investorName: entry.name, snippet: text.slice(0, 280) })
+      .catch(err => console.warn('messages: investor notice failed', err));
+    return res.status(200).json({ ok: true, message: msg });
+  }
+
+  // Investor → admin.
+  const msg = appendMessage(msgFile, session.email, { from: 'investor', authorEmail: session.email, body: text });
+  try { await saveMessages(drive, msgFileId, msgFile); }
+  catch (err) { console.error('messages: save failed', err); return res.status(500).json({ ok: false, message: 'Could not send message.' }); }
+  const investorName = await nameForEmail(registry, session.email);
+  sendNewMessageToAdmin({ to: KEVIN_EMAIL, investorName, investorEmail: session.email, snippet: text.slice(0, 280) })
+    .catch(err => console.warn('messages: admin notice failed', err));
+  return res.status(200).json({ ok: true, message: msg });
 }
 
 // ---------- Login ----------
