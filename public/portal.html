@@ -159,7 +159,7 @@
 
   <section class="portal-hero">
     <div class="portal-hero-inner" id="hero">
-      <div class="eyebrow">Promissory Note · The Avenue at Fountain Hills</div>
+      <div class="eyebrow">Investor Portal · The Avenue at Fountain Hills</div>
       <h1>Welcome.</h1>
       <p>Loading your portal…</p>
     </div>
@@ -208,11 +208,8 @@
       rate: r.rate || '',
       termMonths: r.termMonths || '',
       folderId: r.folderId || null,
-      blankPdfId: r.blankPdfId || null,
-      lukasSignedAt: r.lukasSignedAt || null,
-      lukasSignedPdfId: r.lukasSignedPdfId || null,
-      signedAt: r.signedAt || null,
-      signedPdfId: r.signedPdfId || null,
+      status: r.status || 'active',
+      addedAt: r.addedAt || null,
       deletedAt: r.deletedAt || null
     };
   }
@@ -270,91 +267,35 @@
     const files = state.files || [];
     $signedAs.innerHTML = '<span class="status-dot"></span>Signed in as ' + escape(inv.name);
 
-    // State machine
-    const fullyExecuted = !!inv.signedAt;
-    const readyToSign = !fullyExecuted && !!inv.lukasSignedAt;
-    const awaitingLukas = !fullyExecuted && !inv.lukasSignedAt;
-
-    // Pick preview file: prefer signedPdfId, then lukasSignedPdfId, then blankPdfId from
-    // /me (always present). Fall back to files-list match if those IDs aren't on the investor.
-    const previewId = inv.signedPdfId || inv.lukasSignedPdfId || inv.blankPdfId
-      || (files.find(f => f.name === 'signed-promissory-note.pdf')?.id)
-      || (files.find(f => f.name === 'lukas-signed-promissory-note.pdf')?.id)
-      || (files.find(f => f.name === 'blank-promissory-note.pdf')?.id)
-      || null;
-    const previewUrl = previewId ? `https://drive.google.com/file/d/${previewId}/preview` : null;
-
     if ($hero) {
       $hero.innerHTML = `
-        <div class="eyebrow">Promissory Note · The Avenue at Fountain Hills</div>
-        <h1>${fullyExecuted ? 'Welcome back, ' : 'Welcome, '}<em>${escape(firstName(inv.name))}</em>.</h1>
-        <p>${
-          fullyExecuted
-            ? 'Your note is fully executed. Kevin has been notified and will follow up with wire instructions.'
-            : readyToSign
-              ? 'Your promissory note is ready for your counter-signature. Review the document below and sign as Creditor.'
-              : 'Lukas Bondy is signing the Debtor and Guarantor portions. You\'ll be emailed the moment your note is ready to counter-sign.'
-        }</p>
+        <div class="eyebrow">Investor Portal · The Avenue at Fountain Hills</div>
+        <h1>Welcome, <em>${escape(firstName(inv.name))}</em>.</h1>
+        <p>Your home for documents, updates, and anything you need from us on The Avenue at Fountain Hills.</p>
+        <a href="/portal/enter-data-room" class="dataroom-btn">View the data room →</a>
       `;
     }
 
-    let html = `
-      <div class="card">
-        <h2>Your note at a glance</h2>
-        <div class="terms-row"><span class="lbl">Principal</span><span class="val">${fmtMoney(inv.principal)}</span></div>
-        <div class="terms-row"><span class="lbl">Interest rate</span><span class="val">${escape(inv.rate||'')}</span></div>
-        <div class="terms-row"><span class="lbl">Term</span><span class="val">${escape(String(inv.termMonths||''))} months</span></div>
-        <div class="terms-row"><span class="lbl">Personal guarantor</span><span class="val">Lukas Bondy</span></div>
-        <div class="terms-row"><span class="lbl">Status</span><span class="val">${
-          fullyExecuted ? '<span style="color:#9FD6A8">✓ Fully executed · ' + fmtDate(inv.signedAt) + '</span>'
-            : readyToSign ? '<span style="color:var(--gold)">Awaiting your signature</span>'
-            : '<span style="color:var(--gold)">Awaiting Lukas\'s signature</span>'
-        }</span></div>
-      </div>
-    `;
+    let html = '';
 
-    if (fullyExecuted) {
+    // Investment summary
+    const principalSet = Number(inv.principal) > 0;
+    if (principalSet) {
       html += `
-        <div class="banner signed">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          <div>
-            <div style="color:white;font-weight:600;margin-bottom:2px">Promissory note signed</div>
-            <div style="color:var(--muted);font-size:13px">Executed ${fmtDate(inv.signedAt)} · A copy was emailed to ${escape(inv.email)}</div>
-          </div>
+        <div class="card">
+          <h2>Your investment</h2>
+          <div class="terms-row"><span class="lbl">Principal</span><span class="val">${fmtMoney(inv.principal)}</span></div>
+          <div class="terms-row"><span class="lbl">Interest rate</span><span class="val">${escape(inv.rate||'—')}</span></div>
+          <div class="terms-row"><span class="lbl">Term</span><span class="val">${inv.termMonths ? escape(String(inv.termMonths)) + ' months' : '—'}</span></div>
+          <div class="terms-row"><span class="lbl">Status</span><span class="val"><span style="color:#9FD6A8">● Active</span></span></div>
         </div>
       `;
     }
 
-    if (awaitingLukas) {
-      html += `
-        <div class="banner wait">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <div>
-            <div style="color:white;font-weight:600;margin-bottom:2px">Awaiting Lukas's signature</div>
-            <div style="color:var(--muted);font-size:13px">We'll email you the moment Lukas signs and your note is ready to counter-sign.</div>
-          </div>
-        </div>
-      `;
-    }
-
-    // Show any previously-executed note PDF for reference. Signing now happens
-    // through the envelopes section below, not via a bespoke form on this page.
-    if (fullyExecuted && previewUrl) {
-      html += `<div class="card">
-        <h2>Your signed note</h2>
-        <p class="lead">Fully-executed copy</p>
-        <div class="pdf-frame"><iframe src="${previewUrl}" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>
-      </div>`;
-    }
-
-    // Documents awaiting this investor's signature (generic envelopes).
-    // Placeholder div — populated async to keep the initial paint snappy.
-    html += `<div id="envelopesSection"></div>`;
-
-    // Subscription documents
+    // Your documents (uploads + shared files)
     html += `<div class="card">
       <h2>Your documents</h2>
-      <p class="lead">Upload your accreditation letter, ID, wire confirmation, or anything else Kevin requests. Files are saved directly to your Drive folder.</p>
+      <p class="lead">Documents we share with you appear here. You can also upload anything we request — accreditation letter, ID, wire confirmation — saved straight to your folder.</p>
       <form id="uploadForm">
         <label class="upload-zone" id="uploadZone" for="uploadInput">
           <div class="upload-icon">↑</div>
@@ -367,9 +308,6 @@
       <ul class="doc-list" id="docList"></ul>
     </div>`;
 
-    // Shared deal documents (populated async).
-    html += `<div id="dealDocsSection"></div>`;
-
     // Deal updates (populated async).
     html += `<div id="updatesSection"></div>`;
 
@@ -380,41 +318,8 @@
 
     wireUpload(inv);
     renderDocList(files);
-    loadMyEnvelopes();
-    loadDealDocs();
     loadUpdates();
     loadMessages();
-  }
-
-  async function loadDealDocs() {
-    const host = document.getElementById('dealDocsSection');
-    if (!host) return;
-    try {
-      const r = await fetchWithTimeout('/api/portal/deal-docs', {}, 9000);
-      if (!r.ok) return;
-      const d = await r.json();
-      const docs = (d && d.docs) || [];
-      if (!docs.length) { host.innerHTML = ''; return; }
-      host.innerHTML = `<div class="card">
-        <h2>Deal documents</h2>
-        <p class="lead">The full investor package for The Avenue at Fountain Hills.</p>
-        <ul class="doc-list">${docs.map(doc => doc.available ? `
-          <li>
-            <div class="doc-tag">DOC</div>
-            <div class="doc-info">
-              <a class="doc-name" href="${escape(doc.url)}" target="_blank" rel="noopener">${escape(doc.label)}</a>
-              <div class="doc-meta">${escape(doc.blurb || '')}</div>
-            </div>
-          </li>` : `
-          <li style="opacity:.55">
-            <div class="doc-tag">—</div>
-            <div class="doc-info">
-              <span class="doc-name" style="color:var(--muted)">${escape(doc.label)}</span>
-              <div class="doc-meta">Coming soon</div>
-            </div>
-          </li>`).join('')}</ul>
-      </div>`;
-    } catch (err) { console.warn('deal-docs load failed:', err); }
   }
 
   async function loadUpdates() {
@@ -502,45 +407,6 @@
     });
   }
 
-  async function loadMyEnvelopes() {
-    const host = document.getElementById('envelopesSection');
-    if (!host) return;
-    try {
-      const r = await fetchWithTimeout('/api/portal/my-envelopes', {}, 9000);
-      if (!r.ok) return;
-      const d = await r.json();
-      const list = (d && d.envelopes) || [];
-      const pending = list.filter(e => e.canSign && !e.recipientSignedAt);
-      const completed = list.filter(e => e.recipientSignedAt);
-      if (!pending.length && !completed.length) { host.innerHTML = ''; return; }
-      let h = '';
-      if (pending.length) {
-        h += '<div class="card"><h2>Documents awaiting your signature</h2><p class="lead">Click any document below to review and sign.</p><ul class="doc-list" style="margin-top:6px">' + pending.map(e => `
-          <li>
-            <div class="doc-tag">SIGN</div>
-            <div class="doc-info">
-              <a class="doc-name" href="/portal/sign-envelope?id=${encodeURIComponent(e.id)}">${escape(e.title)}</a>
-              <div class="doc-meta">${e.sentAt ? 'Requested ' + fmtDate(e.sentAt) : 'Awaiting your turn'}</div>
-            </div>
-          </li>`).join('') + '</ul></div>';
-      }
-      if (completed.length) {
-        h += '<div class="card"><h2>Documents you\'ve signed</h2><ul class="doc-list" style="margin-top:6px">' + completed.map(e => `
-          <li>
-            <div class="doc-tag signed">✓</div>
-            <div class="doc-info">
-              <a class="doc-name" href="/portal/sign-envelope?id=${encodeURIComponent(e.id)}">${escape(e.title)}</a>
-              <div class="doc-meta">${e.executedAt ? 'Fully executed ' + fmtDate(e.executedAt) : 'You signed ' + fmtDate(e.recipientSignedAt) + ' — awaiting others'}</div>
-            </div>
-          </li>`).join('') + '</ul></div>';
-      }
-      host.innerHTML = h;
-    } catch (err) {
-      // Non-fatal; just leave the section empty.
-      console.warn('my-envelopes load failed:', err);
-    }
-  }
-
   function firstName(n){ return (n||'').split(' ')[0]; }
 
 
@@ -575,14 +441,11 @@
     if (!files.length) { list.innerHTML = '<li style="color:var(--muted);font-style:italic;justify-content:center">No documents yet.</li>'; return; }
     list.innerHTML = files.map(f => {
       const ext = fileExt(f.name);
-      const isSigned = f.name === 'signed-promissory-note.pdf';
-      const meta = isSigned ? 'Fully executed · ' + fmtDate(f.createdTime)
-                            : 'Uploaded ' + fmtDate(f.createdTime);
       return `<li>
-        <span class="doc-tag${isSigned?' signed':''}">${escape(ext||'FILE')}</span>
+        <span class="doc-tag">${escape(ext||'FILE')}</span>
         <div class="doc-info">
           <a class="doc-name" href="${escape(f.url)}" target="_blank" rel="noopener">${escape(f.name)}</a>
-          <div class="doc-meta">${meta}</div>
+          <div class="doc-meta">${fmtDate(f.createdTime)}</div>
         </div>
       </li>`;
     }).join('');

@@ -16,8 +16,10 @@ function serve(res, filename) {
 }
 
 export default function handler(req, res) {
-  const portal = verifyPortalSession(req);
-  if (portal && portal.role === 'admin') {
+  // Any signed-in portal user (invited investor or admin) sees the real document
+  // room. A bare data-room cookie with no portal session means a member of the
+  // public who unlocked the gate — they get the "deal is closed" page.
+  if (verifyPortalSession(req)) {
     return serve(res, 'room.html');
   }
   if (verifySession(req)) {

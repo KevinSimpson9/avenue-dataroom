@@ -284,9 +284,6 @@
   const $body = document.getElementById('body');
   const $signedAs = document.getElementById('signed-as');
   const $bc = document.getElementById('bcWrap');
-  const LUKAS_EMAIL = 'bondysconstruction@gmail.com';
-  const KEVIN_EMAIL = 'kevin@akcapital.fund';
-  const WALKTHROUGH_EMAILS = [KEVIN_EMAIL, LUKAS_EMAIL];
   const MAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
   const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   const ROSTER_COLGROUP = '<colgroup><col style="width:38%"><col style="width:14%"><col style="width:22%"><col style="width:26%"></colgroup>';
@@ -355,12 +352,6 @@
   function resetAddForm() {
     const form = document.getElementById('addInvestor');
     if (form) form.reset();
-    const zone = document.getElementById('fileZone');
-    if (zone) {
-      zone.classList.remove('has-file');
-      const label = zone.firstElementChild;
-      if (label) label.textContent = 'Blank promissory note PDF';
-    }
     const err = document.getElementById('addErr');
     if (err) err.textContent = '';
   }
@@ -408,37 +399,23 @@
     const investors = (roster.investors || []).filter(i => !i.deletedAt);
     const removed = (roster.investors || []).filter(i => i.deletedAt);
     const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0), 0);
-    const numSigned = investors.filter(i => i.state === 'fully-executed').length;
-    const numAwaiting = investors.filter(i => i.state !== 'fully-executed').length;
-    const myEmail = ((me && me.email) || '').toLowerCase();
-    const canSeeWalkthrough = WALKTHROUGH_EMAILS.includes(myEmail);
+    const numActive = investors.filter(i => i.state === 'active').length;
+    const numInvited = investors.filter(i => i.state === 'invited').length;
 
     $body.innerHTML = `
       <h1>Investor roster</h1>
       <p class="h1-sub">All committed investors, their signing status, and their personal folder.</p>
       <div class="summary">
         <div class="summary-cell"><div class="lbl">Investors</div><div class="val">${investors.length}</div></div>
-        <div class="summary-cell"><div class="lbl">Signed</div><div class="val">${numSigned}</div></div>
-        <div class="summary-cell"><div class="lbl">Awaiting</div><div class="val">${numAwaiting}</div></div>
+        <div class="summary-cell"><div class="lbl">Active</div><div class="val">${numActive}</div></div>
+        <div class="summary-cell"><div class="lbl">Invited</div><div class="val">${numInvited}</div></div>
         <div class="summary-cell"><div class="lbl">Committed capital</div><div class="val">${fmtMoney(totalCommit)}</div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2>Document signing</h2>
-          <div style="display:flex;gap:8px">
-            <a class="row-btn" href="/portal/admin/envelopes" style="text-decoration:none">View all envelopes →</a>
-            <a class="add-btn" href="/portal/admin/envelope" style="text-decoration:none">+ Send a document</a>
-          </div>
-        </div>
-        <p style="color:var(--muted);font-size:13px;margin:0">Send any PDF for signature to one or more recipients. Pick where the signatures go, what each signer fills in, and (optionally) the signing order — works for any document, not just promissory notes.</p>
       </div>
 
       <div class="card">
         <div class="card-head">
           <h2>All investors</h2>
           <div class="head-actions">
-            ${canSeeWalkthrough ? `<button class="walkthrough-trigger" id="howItWorks" type="button">See how it works →</button>` : ''}
             <button class="add-btn" id="addToggle" type="button">+ Add investor</button>
           </div>
         </div>
@@ -468,15 +445,10 @@
               <div class="field"><label>Rate (%/yr)</label><input type="text" name="rate" value="20% per annum"></div>
               <div class="field"><label>Term (months)</label><input type="number" name="termMonths" value="20"></div>
             </div>
-            <label class="file-zone" id="fileZone" for="blankInput">
-              <div style="color:white;margin-bottom:4px">Blank promissory note PDF</div>
-              <div>Drop the investor's pre-customized PDF here, or click to browse.</div>
-              <div style="font-size:11px;margin-top:6px">Lukas will be emailed to sign as soon as this is saved.</div>
-            </label>
-            <input type="file" name="blankPdf" id="blankInput" accept="application/pdf" style="display:none" required>
+            <p style="color:var(--muted);font-size:12px;margin:12px 0 0">We'll create their folder and email them a portal invite to set a password. Terms are shown to them as read-only info.</p>
             <div class="add-actions">
               <button type="button" class="cancel-btn" id="cancelAdd">Cancel</button>
-              <button type="submit" class="add-btn">Create investor &amp; notify Lukas</button>
+              <button type="submit" class="add-btn">Create investor &amp; send invite</button>
             </div>
             <div class="err" id="addErr"></div>
           </form>
@@ -501,17 +473,9 @@
     document.getElementById('addToggle').addEventListener('click', () => {
       document.getElementById('addForm').classList.toggle('open');
     });
-    const $howItWorks = document.getElementById('howItWorks');
-    if ($howItWorks) $howItWorks.addEventListener('click', openWalkthrough);
     document.getElementById('cancelAdd').addEventListener('click', () => {
       resetAddForm();
       document.getElementById('addForm').classList.remove('open');
-    });
-    document.getElementById('blankInput').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      const zone = document.getElementById('fileZone');
-      if (f) zone.classList.add('has-file'), zone.firstElementChild.textContent = '✓ ' + f.name;
-      else zone.classList.remove('has-file');
     });
     document.getElementById('addInvestor').addEventListener('submit', addInvestor);
 
@@ -637,9 +601,8 @@
   function rowHtml(inv) {
     const badge =
       inv.deletedAt ? `<span class="badge removed">Removed</span>` :
-      inv.state === 'fully-executed' ? `<span class="badge signed">✓ Signed · ${fmtDate(inv.signedAt)}</span>` :
-      inv.state === 'awaiting-investor' ? `<span class="badge pending-investor">Awaiting investor</span>` :
-      `<span class="badge pending-lukas">Awaiting Lukas</span>`;
+      inv.state === 'active' ? `<span class="badge signed">● Active</span>` :
+      `<span class="badge pending-investor">Invited</span>`;
     return `<tr>
       <td>
         <div class="name-cell">
@@ -673,14 +636,21 @@
     const errEl = document.getElementById('addErr'); errEl.textContent = '';
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const payload = {
+      name: fd.get('name'), email: fd.get('email'),
+      principal: fd.get('principal'), rate: fd.get('rate'), termMonths: fd.get('termMonths')
+    };
     const btn = form.querySelector('button[type=submit]');
-    const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & notify Lukas'; };
+    const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & send invite'; };
     btn.disabled = true; btn.textContent = 'Creating…';
     try {
-      const res = await fetch('/api/portal/add-investor', { method:'POST', body: fd });
+      const res = await fetch('/api/portal/add-investor', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
       const data = await res.json();
       if (data.ok) {
-        toast('Investor added. Lukas has been notified.', 'success');
+        toast(data.invited ? 'Investor added — invite emailed.' : 'Investor added. Invite email failed; use the resend button.', data.invited ? 'success' : 'error');
         const r = await loadRoster(); roster = r;
         renderRoster();
       } else {
@@ -757,15 +727,9 @@
     const inv = data.investor;
     document.getElementById('bcName').textContent = inv.name;
     const files = data.files || [];
-    const blankFile = files.find(f => f.name === 'blank-promissory-note.pdf');
-    const lukasFile = files.find(f => f.name === 'lukas-signed-promissory-note.pdf');
-    const signedFile = files.find(f => f.name === 'signed-promissory-note.pdf');
-    const preview = signedFile || lukasFile || blankFile;
-    const isLukas = me && me.email && me.email.toLowerCase() === LUKAS_EMAIL;
     const stateLabel =
-      inv.signedAt ? `<span style="color:#9FD6A8">✓ Fully executed · ${fmtDate(inv.signedAt)}</span>` :
-      inv.lukasSignedAt ? `<span style="color:var(--gold)">Awaiting investor signature</span>` :
-      `<span style="color:var(--gold)">Awaiting Lukas's signature</span>`;
+      inv.status === 'active' ? `<span style="color:#9FD6A8">● Active</span>` :
+      `<span style="color:var(--gold)">Invited — awaiting first sign-in</span>`;
 
     $body.innerHTML = `
       <div class="admin-banner">
@@ -777,20 +741,14 @@
       <p class="h1-sub">${escape(inv.email)} · ${fmtMoney(inv.principal)} · ${escape(inv.rate||'')} · ${escape(String(inv.termMonths||''))} months</p>
 
       <div class="card">
-        <div class="card-head"><h2>Note terms</h2></div>
+        <div class="card-head"><h2>Investment</h2></div>
         <div style="font-size:14px">
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Principal</span><span style="color:white">${fmtMoney(inv.principal)}</span></div>
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Interest rate</span><span style="color:white">${escape(inv.rate||'')}</span></div>
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Term</span><span style="color:white">${escape(String(inv.termMonths||''))} months</span></div>
           <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--muted)">Status</span><span style="color:white">${stateLabel}</span></div>
         </div>
-        ${isLukas && !inv.lukasSignedAt && blankFile ? `<a href="/portal/admin/envelope" class="add-btn" style="margin-top:14px;display:inline-block;text-decoration:none">Create signing envelope →</a>` : ''}
       </div>
-
-      ${preview ? `<div class="card">
-        <div class="card-head"><h2>${signedFile?'Fully executed':lukasFile?'Lukas-signed (awaiting investor)':'Blank (awaiting Lukas)'}</h2></div>
-        <div class="pdf-frame"><iframe src="https://drive.google.com/file/d/${preview.id}/preview" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>
-      </div>` : ''}
 
       <div class="card">
         <div class="card-head"><h2>All documents</h2></div>
@@ -874,9 +832,8 @@
     if (!files.length) { list.innerHTML = '<li class="empty">No documents yet.</li>'; return; }
     list.innerHTML = files.map(f => {
       const ext = fileExt(f.name);
-      const isSigned = f.name === 'signed-promissory-note.pdf';
       return `<li>
-        <span class="doc-tag${isSigned?' signed':''}">${escape(ext||'FILE')}</span>
+        <span class="doc-tag">${escape(ext||'FILE')}</span>
         <div class="doc-info">
           <a class="doc-name" href="${escape(f.url)}" target="_blank" rel="noopener">${escape(f.name)}</a>
           <div class="doc-meta">${fmtDate(f.createdTime)}</div>
@@ -959,176 +916,6 @@
     }
   }
 
-  // ---------- Walkthrough ----------
-  const WALKTHROUGH_STEPS = [
-    {
-      title: 'Add the investor',
-      narr: `Fill in their details and drop in the pre-filled blank promissory note PDF. As soon as you save, we create their Drive folder and email Lukas to sign.`,
-      mock: `
-        <div class="wt-mock wt-mock-form">
-          <div class="wt-mock-label">+ Add investor</div>
-          <div class="wt-field"><div class="wt-field-label">Full legal name</div><div class="wt-field-val">Jane Doe</div></div>
-          <div class="wt-field"><div class="wt-field-label">Email</div><div class="wt-field-val">jane@example.com</div></div>
-          <div class="wt-grid">
-            <div class="wt-field"><div class="wt-field-label">Principal</div><div class="wt-field-val">$125,000</div></div>
-            <div class="wt-field"><div class="wt-field-label">Rate</div><div class="wt-field-val">20% per annum</div></div>
-          </div>
-          <div class="wt-field"><div class="wt-field-label">Term</div><div class="wt-field-val">20 months</div></div>
-          <div class="wt-drop">✓ jane-doe-promissory-note.pdf</div>
-        </div>
-      `
-    },
-    {
-      title: 'Lukas gets notified',
-      narr: `Lukas receives an email the moment the investor is created. One click takes him to the admin signature queue.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To Lukas Bondy</div>
-          <div class="wt-em-subj">New promissory note awaiting your signature — Jane Doe</div>
-          <div class="wt-em-body">Hi Lukas,<br><br>Kevin has added <strong>Jane Doe</strong> ($125,000) to the investor portal. Open your admin dashboard to sign as Debtor and Guarantor.</div>
-          <span class="wt-em-cta">Open signature queue</span>
-        </div>
-      `
-    },
-    {
-      title: 'Lukas signs as Debtor & Guarantor',
-      narr: `Lukas reviews the blank PDF and signs once. We overlay his signature and save it as <strong>lukas-signed-promissory-note.pdf</strong> in Jane's folder.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-mock-label">/portal/admin/envelope</div>
-          <div class="wt-pdf">PDF preview</div>
-          <span class="wt-sign-btn">Place fields &amp; send →</span>
-        </div>
-        <div class="wt-mock wt-mock-badges">
-          <span class="badge pending-lukas">Awaiting Lukas</span>
-          <span class="wt-arrow">→</span>
-          <span class="badge pending-investor">Awaiting investor</span>
-        </div>
-      `
-    },
-    {
-      title: 'Investor is invited to counter-sign',
-      narr: `Jane gets her ready-to-sign email. If she hasn't set a portal password yet, this same email doubles as her setup link.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
-          <div class="wt-em-subj">Your promissory note for The Avenue is ready to sign</div>
-          <div class="wt-em-body">Hello Jane,<br><br>Lukas Bondy has signed his portion (Debtor and Guarantor) of your <strong>$125,000</strong> promissory note. The document is now ready for your counter-signature as Creditor.</div>
-          <span class="wt-em-cta">Set password &amp; sign your note</span>
-        </div>
-      `
-    },
-    {
-      title: 'Investor counter-signs in their portal',
-      narr: `Jane reviews Lukas's signed copy in her portal and counter-signs as Creditor. The fully-executed PDF is saved as <strong>signed-promissory-note.pdf</strong>.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-mock-label">/portal — Jane's documents</div>
-          <div class="wt-doc"><span class="wt-doc-tag">PDF</span><span class="wt-doc-name">lukas-signed-promissory-note.pdf</span><span class="badge pending-investor">Ready</span></div>
-          <div class="wt-sign-row"><span class="wt-sign-btn">Counter-sign as Creditor →</span></div>
-        </div>
-        <div class="wt-mock wt-mock-badges">
-          <span class="badge pending-investor">Awaiting investor</span>
-          <span class="wt-arrow">→</span>
-          <span class="badge signed">✓ Signed</span>
-        </div>
-      `
-    },
-    {
-      title: 'Executed copy is delivered',
-      narr: `Jane receives the fully-executed PDF, and you get a heads-up that it's time to send wire instructions.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
-          <div class="wt-em-subj">Your fully-executed promissory note</div>
-          <div class="wt-em-body">Hello Jane,<br><br>Attached is your fully-executed <strong>$125,000</strong> promissory note for The Avenue at Fountain Hills. Lukas Bondy has signed as Debtor and Guarantor; your counter-signature as Creditor is now on file.</div>
-          <span class="wt-em-attach"><span class="wt-em-tag">PDF</span>signed-promissory-note.pdf</span>
-        </div>
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>The Avenue Portal</strong> · To Kevin@AKCapital.fund</div>
-          <div class="wt-em-subj">Jane Doe signed their promissory note ($125,000)</div>
-          <div class="wt-em-body">Kevin — <strong>Jane Doe</strong> just counter-signed their <strong>$125,000</strong> promissory note. Time to send wire instructions.</div>
-        </div>
-      `
-    }
-  ];
-
-  function openWalkthrough() {
-    let idx = 0;
-    const root = document.createElement('div');
-    root.className = 'wt-backdrop';
-    root.innerHTML = `
-      <div class="wt-modal" role="dialog" aria-modal="true" aria-label="Signing flow walkthrough">
-        <div class="wt-head">
-          <div class="wt-dots">${WALKTHROUGH_STEPS.map((_,i) => `<button class="wt-dot" data-i="${i}" type="button" aria-label="Step ${i+1}"></button>`).join('')}</div>
-          <div class="wt-meta">
-            <span class="wt-counter" id="wtCounter"></span>
-            <button class="wt-close" id="wtClose" type="button" aria-label="Close walkthrough">×</button>
-          </div>
-        </div>
-        <div class="wt-body" id="wtBody">
-          ${WALKTHROUGH_STEPS.map((s,i) => `
-            <section class="wt-step" data-i="${i}">
-              <h3 class="wt-title">${escape(s.title)}</h3>
-              <p class="wt-narr">${s.narr}</p>
-              ${s.mock}
-            </section>
-          `).join('')}
-        </div>
-        <div class="wt-foot">
-          <button class="wt-btn" id="wtPrev" type="button">← Back</button>
-          <button class="wt-btn primary" id="wtNext" type="button">Next →</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(root);
-    document.body.classList.add('modal-lock');
-    const previouslyFocused = document.activeElement;
-
-    const $prev = root.querySelector('#wtPrev');
-    const $next = root.querySelector('#wtNext');
-    const $counter = root.querySelector('#wtCounter');
-    const $body = root.querySelector('#wtBody');
-    const $dots = root.querySelectorAll('.wt-dot');
-    const $steps = root.querySelectorAll('.wt-step');
-    $next.focus();
-
-    function render() {
-      $steps.forEach((el,i) => el.classList.toggle('is-active', i === idx));
-      $dots.forEach((el,i) => {
-        el.classList.toggle('is-active', i === idx);
-        el.classList.toggle('is-done', i < idx);
-      });
-      $counter.textContent = `Step ${idx+1} of ${WALKTHROUGH_STEPS.length}`;
-      $prev.disabled = idx === 0;
-      $next.textContent = idx === WALKTHROUGH_STEPS.length - 1 ? 'Done' : 'Next →';
-      $body.scrollTop = 0;
-    }
-
-    function close() {
-      document.removeEventListener('keydown', onKey);
-      document.body.classList.remove('modal-lock');
-      root.remove();
-      try { previouslyFocused && previouslyFocused.focus && previouslyFocused.focus(); } catch {}
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') close();
-      else if (e.key === 'ArrowRight' && idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
-      else if (e.key === 'ArrowLeft' && idx > 0) { idx--; render(); }
-    }
-
-    $prev.addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
-    $next.addEventListener('click', () => {
-      if (idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
-      else close();
-    });
-    root.querySelector('#wtClose').addEventListener('click', close);
-    root.addEventListener('click', (e) => { if (e.target === root) close(); });
-    $dots.forEach(d => d.addEventListener('click', () => { idx = Number(d.dataset.i); render(); }));
-    document.addEventListener('keydown', onKey);
-
-    render();
-  }
 
   init();
 </script>
