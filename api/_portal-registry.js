@@ -137,8 +137,13 @@ export function findByEmail(registry, email, { includeDeleted = false } = {}) {
 }
 
 // Replace (in-place) the matching entry. Returns the mutated entry.
+// Prefers the ACTIVE (non-deleted) entry so that when a duplicate exists (e.g. an
+// investor who was removed and re-added shares an email with a removed record),
+// writes like password/resetNonce land on the live account — not the dead twin.
 export function updateEntry(registry, email, patch) {
-  const idx = registry.entries.findIndex(e => normalizeEmail(e.email) === normalizeEmail(email));
+  const target = normalizeEmail(email);
+  let idx = registry.entries.findIndex(e => !e.deletedAt && normalizeEmail(e.email) === target);
+  if (idx === -1) idx = registry.entries.findIndex(e => normalizeEmail(e.email) === target);
   if (idx === -1) return null;
   registry.entries[idx] = { ...registry.entries[idx], ...patch };
   return registry.entries[idx];

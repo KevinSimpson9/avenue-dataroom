@@ -714,7 +714,11 @@ async function postAddInvestor(req, res) {
     console.error('add-investor: registry load failed', err);
     return res.status(500).json({ ok: false, message: 'Server not configured.' });
   }
-  if (findByEmail(registry, email)) {
+  // Reject if an ACTIVE investor already uses this email. If only a *removed*
+  // record exists, we reactivate it in place (rather than creating a duplicate,
+  // which would split password/terms across two records for the same email).
+  const existing = findByEmail(registry, email, { includeDeleted: true });
+  if (existing && !existing.deletedAt) {
     return res.status(409).json({ ok: false, message: 'An investor with that email already exists.' });
   }
 
@@ -726,7 +730,7 @@ async function postAddInvestor(req, res) {
     return res.status(500).json({ ok: false, message: 'Could not create the investor folder.' });
   }
 
-  registry.entries.push({
+  const record = {
     role: 'investor',
     name, email,
     principal: principal || null, rate: principal ? rate : null, termMonths: principal ? termMonths : null,
@@ -734,7 +738,14 @@ async function postAddInvestor(req, res) {
     folderId: folder.id,
     passwordHash: null, passwordCreatedAt: null, resetNonce: null,
     addedAt: new Date().toISOString(), deletedAt: null
-  });
+  };
+  if (existing && existing.deletedAt) {
+    // Reactivate: replace the removed record in place so there's only one per email.
+    const idx = registry.entries.indexOf(existing);
+    registry.entries[idx] = record;
+  } else {
+    registry.entries.push(record);
+  }
   await saveRegistry(drive, fileId, registry);
 
   // Email the investor their portal invite (sets their password on first visit).
