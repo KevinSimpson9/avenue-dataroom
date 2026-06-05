@@ -673,7 +673,8 @@
       <td>
         <div class="actions-cell">
           ${inv.deletedAt ? '' : `<button class="row-btn primary" data-act="open" data-email="${escape(inv.email)}">Open folder →</button>`}
-          ${inv.deletedAt ? '' : `<button class="row-btn icon" data-act="resend" data-email="${escape(inv.email)}" title="Resend sign-in link" aria-label="Resend sign-in link">${MAIL_ICON}</button>`}
+          ${inv.deletedAt ? '' : `<button class="row-btn" data-act="link" data-email="${escape(inv.email)}" title="Get a sign-in link">${inv.state === 'active' ? 'Reset link' : 'Sign-in link'}</button>`}
+          ${inv.deletedAt ? '' : `<button class="row-btn icon" data-act="resend" data-email="${escape(inv.email)}" title="Email the sign-in link" aria-label="Email the sign-in link">${MAIL_ICON}</button>`}
           ${inv.deletedAt ? '' : `<button class="row-btn icon danger" data-act="remove" data-email="${escape(inv.email)}" title="Remove investor" aria-label="Remove investor">${TRASH_ICON}</button>`}
         </div>
       </td>
@@ -682,8 +683,51 @@
 
   function rowAction(act, email, btn) {
     if (act === 'open') { window.location.search = '?email=' + encodeURIComponent(email); return; }
+    if (act === 'link') return getInviteLink(email, btn);
     if (act === 'resend') return resendLink(email, btn);
     if (act === 'remove') return removeInvestor(email, btn);
+  }
+
+  // Fetch a ready-to-use sign-in link for an investor and show it (copies to
+  // clipboard too). Works even when invite emails aren't being delivered.
+  async function getInviteLink(email, btn) {
+    if (btn) { btn.disabled = true; }
+    try {
+      const res = await fetch('/api/portal/invite-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!data.ok) { toast(data.message || 'Could not get link.', 'error'); return; }
+      try { await navigator.clipboard.writeText(data.url); toast('Sign-in link copied to clipboard.', 'success'); } catch {}
+      showLinkDialog(data);
+    } catch { toast('Network error. Try again.', 'error'); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  function showLinkDialog(data) {
+    const root = document.createElement('div');
+    root.className = 'wt-backdrop';
+    root.innerHTML = `
+      <div class="confirm-modal" role="dialog" aria-modal="true" style="max-width:520px">
+        <h3>${escape(data.name || data.email)}'s sign-in link</h3>
+        <p>${data.kind === 'setup'
+          ? 'Open this to set their password and enter the portal — or send it to them directly. It only needs to be used once.'
+          : 'This is a fresh password-reset link (their old link no longer works). Open it to set a new password.'}</p>
+        <input readonly value="${escape(data.url)}" onclick="this.select()" style="width:100%;padding:11px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:12px;font-family:monospace;margin-bottom:18px">
+        <div class="confirm-actions">
+          <button type="button" class="wt-btn" data-act="copy">Copy link</button>
+          <a class="wt-btn primary" href="${escape(data.url)}" target="_blank" rel="noopener">Open it now →</a>
+        </div>
+      </div>`;
+    document.body.appendChild(root);
+    document.body.classList.add('modal-lock');
+    const close = () => { document.body.classList.remove('modal-lock'); root.remove(); };
+    root.addEventListener('click', (e) => {
+      if (e.target === root) return close();
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'copy') { navigator.clipboard.writeText(data.url).then(() => toast('Copied.', 'success')).catch(() => {}); }
+    });
+    const field = root.querySelector('input'); if (field) { field.focus(); field.select(); }
   }
 
   async function addInvestor(e) {

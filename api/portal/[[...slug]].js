@@ -109,6 +109,7 @@ export default async function handler(req, res) {
       if (route === 'add-investor') return await postAddInvestor(req, res);
       if (route === 'remove-investor') return await postRemoveInvestor(req, res);
       if (route === 'resend-link') return await postResendLink(req, res);
+      if (route === 'invite-link') return await postInviteLink(req, res);
     }
     return res.status(404).json({ ok: false, message: 'Not found', route });
   } catch (err) {
@@ -809,6 +810,42 @@ async function postResendLink(req, res) {
     return res.status(200).json({ ok: true });
   }
   return res.status(400).json({ ok: false, message: 'Unknown kind.' });
+}
+
+// POST /portal/invite-link (admin) — returns a ready-to-use sign-in link for an
+// investor so the admin can open it or share it directly, without depending on
+// email delivery. If the investor has no password yet → a setup link; otherwise
+// a fresh password-reset link (rotates the nonce so old links stop working).
+async function postInviteLink(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const email = normalizeEmail(body?.email);
+  if (!email) return res.status(400).json({ ok: false, message: 'Email is required.' });
+
+  let registry, fileId, drive;
+  try { ({ registry, fileId, drive } = await loadRegistry()); }
+  catch (err) { console.error('invite-link: registry load failed', err); return res.status(500).json({ ok: false, message: 'Server not configured.' }); }
+  const entry = findByEmail(registry, email);
+  if (!entry) return res.status(404).json({ ok: false, message: 'Investor not found.' });
+  if (entry.deletedAt) return res.status(400).json({ ok: false, message: 'Investor has been removed.' });
+
+  let token, kind;
+  if (!entry.passwordHash) {
+    token = issueToken({ email: entry.email, purpose: 'setup' });
+    kind = 'setup';
+  } else {
+    const nonce = crypto.randomBytes(8).toString('hex');
+    updateEntry(registry, entry.email, { resetNonce: nonce });
+    try { await saveRegistry(drive, fileId, registry); } catch (err) { console.warn('invite-link: save failed', err); }
+    token = issueToken({ email: entry.email, purpose: 'reset', nonce });
+    kind = 'reset';
+  }
+  const proto = (req.headers['x-forwarded-proto'] || 'https').toString().split(',')[0];
+  const host = (req.headers.host || '').toString();
+  const base = host ? `${proto}://${host}` : (process.env.PORTAL_BASE_URL || 'https://dataroom.theavenuefh.com').replace(/\/$/, '');
+  const url = `${base}/portal/setup?token=${encodeURIComponent(token)}`;
+  return res.status(200).json({ ok: true, url, kind, email: entry.email, name: entry.name });
 }
 
 // ---------- Expired-link page ----------
