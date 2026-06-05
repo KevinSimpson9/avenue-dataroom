@@ -75,128 +75,58 @@ export async function sendSetupLink({ to, name, token }) {
   });
 }
 
-// ---------- 2. Lukas notification — new investor added ----------
-export async function sendLukasNewNoteNotice({ to, investorName, principal }) {
-  const url = `${baseUrl()}/portal/admin/envelopes`;
-  const amount = formatMoney(principal);
+// ---------- 8. New message from an investor → notify the admin ----------
+export async function sendNewMessageToAdmin({ to, investorName, investorEmail, snippet }) {
+  const who = investorName || investorEmail || 'An investor';
+  const url = `${baseUrl()}/portal/admin?email=${encodeURIComponent(investorEmail || '')}`;
   return send({
     to,
-    subject: `New investor added — ${investorName}`,
-    html: shell(`
-      <p>Hi Lukas,</p>
-      <p>Kevin has added <strong>${investorName}</strong> (${amount}) to the investor portal. When the promissory note is ready, create an envelope, drop the signature fields where they belong, and send it.</p>
-      ${ctaButton('Open envelopes', url)}
-    `),
-    text: `Hi Lukas,\n\nKevin has added ${investorName} (${amount}) to the investor portal. Create a signing envelope when the promissory note is ready:\n\n${url}`
-  });
-}
-
-// ---------- 3. Investor — your note is ready to counter-sign ----------
-// Sent after Lukas signs. If passwordHash is null, this same email IS the setup link.
-export async function sendInvestorReadyToSign({ to, name, principal, needsSetup, setupToken }) {
-  const amount = formatMoney(principal);
-  const greeting = name ? `Hello ${name.split(' ')[0]},` : 'Hello,';
-  const url = needsSetup
-    ? `${baseUrl()}/portal/setup?token=${encodeURIComponent(setupToken)}`
-    : `${baseUrl()}/portal`;
-  const label = needsSetup ? 'Set password & sign your note' : 'Review and sign your note';
-  return send({
-    to,
-    subject: 'Your promissory note for The Avenue is ready to sign',
-    html: shell(`
-      <p>${greeting}</p>
-      <p>Lukas Bondy has signed his portion (Debtor and Guarantor) of your <strong>${amount}</strong> promissory note. The document is now ready for your counter-signature as Creditor.</p>
-      ${ctaButton(label, url)}
-      <p style="font-size: 13px; color: #666;">Once you sign, you'll receive a fully-executed PDF copy by email. Kevin will follow up separately with wire instructions.</p>
-    `),
-    text: `${greeting}\n\nLukas Bondy has signed his portion of your ${amount} promissory note. Click here to review and counter-sign:\n\n${url}\n\nOnce signed, you'll receive a fully-executed copy. Kevin will send wire instructions separately.`
-  });
-}
-
-// ---------- 4. Investor — fully executed copy ----------
-export async function sendExecutedCopy({ to, name, principal, pdfBytes, pdfFilename, bcc }) {
-  const amount = formatMoney(principal);
-  const greeting = name ? `Hello ${name.split(' ')[0]},` : 'Hello,';
-  return send({
-    to,
-    subject: 'Your fully-executed promissory note',
-    bcc,
-    html: shell(`
-      <p>${greeting}</p>
-      <p>Attached is your fully-executed <strong>${amount}</strong> promissory note for The Avenue at Fountain Hills. Lukas Bondy has signed as Debtor and Guarantor; your counter-signature as Creditor is now on file.</p>
-      <p>Kevin will follow up separately with wire instructions. You can also revisit your investor portal anytime to download a copy or upload supporting documents.</p>
-      ${ctaButton('Open your portal', `${baseUrl()}/portal`)}
-    `),
-    text: `${greeting}\n\nAttached is your fully-executed ${amount} promissory note for The Avenue at Fountain Hills.\n\nKevin will follow up separately with wire instructions. You can also revisit your portal anytime at ${baseUrl()}/portal`,
-    attachments: pdfBytes ? [{
-      filename: pdfFilename,
-      content: Buffer.from(pdfBytes).toString('base64')
-    }] : undefined
-  });
-}
-
-// ---------- 5. Kevin — admin notification (investor counter-signed) ----------
-export async function sendKevinInvestorSignedNotice({ to, investorName, principal }) {
-  const amount = formatMoney(principal);
-  return send({
-    to,
-    subject: `${investorName} signed their promissory note (${amount})`,
+    subject: `New message from ${who}`,
     html: shell(`
       <p>Kevin —</p>
-      <p><strong>${investorName}</strong> just counter-signed their <strong>${amount}</strong> promissory note. Time to send wire instructions.</p>
-      ${ctaButton('Open admin portal', `${baseUrl()}/portal/admin`)}
+      <p><strong>${escapeHtml(who)}</strong> sent you a message in the investor portal:</p>
+      <blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet || '')}</blockquote>
+      ${ctaButton('Open the conversation', url)}
     `),
-    text: `Kevin — ${investorName} just counter-signed their ${amount} promissory note. Time to send wire instructions.\n\nAdmin portal: ${baseUrl()}/portal/admin`
+    text: `Kevin — ${who} sent you a message in the investor portal:\n\n"${snippet || ''}"\n\nReply here: ${url}`
   });
 }
 
-// ---------- 6. Generic envelope — invite a recipient to sign ----------
-export async function sendEnvelopeInvite({ to, recipientName, envelopeTitle, senderName, token, envelopeId, bcc }) {
-  const url = `${baseUrl()}/portal/sign-envelope?id=${encodeURIComponent(envelopeId)}&token=${encodeURIComponent(token)}`;
-  const greeting = recipientName ? `Hello ${String(recipientName).split(' ')[0]},` : 'Hello,';
-  const who = senderName || 'The Avenue';
-  const title = envelopeTitle || 'a document';
+// ---------- 9. Admin reply → notify the investor ----------
+export async function sendAdminReplyToInvestor({ to, investorName, snippet }) {
+  const greeting = investorName ? `Hello ${String(investorName).split(' ')[0]},` : 'Hello,';
+  const url = `${baseUrl()}/portal`;
   return send({
     to,
-    bcc,
-    subject: `${who} requested your signature on "${title}"`,
+    subject: 'New message from Kevin · The Avenue',
     html: shell(`
       <p>${greeting}</p>
-      <p><strong>${escapeHtml(who)}</strong> has requested your signature on <strong>${escapeHtml(title)}</strong>. Click below to review the document and sign.</p>
-      ${ctaButton('Review and sign', url)}
-      <p style="font-size: 13px; color: #666;">This link is single-use. After you sign, it can't be reused.</p>
+      <p>Kevin replied to you in your investor portal:</p>
+      <blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet || '')}</blockquote>
+      ${ctaButton('Open your portal', url)}
     `),
-    text: `${greeting}\n\n${who} has requested your signature on "${title}". Click here to review and sign:\n\n${url}\n\nThis link is single-use.`
+    text: `${greeting}\n\nKevin replied to you in your investor portal:\n\n"${snippet || ''}"\n\nOpen your portal: ${url}`
   });
 }
 
-// ---------- 7. Generic envelope — fully executed copy to every recipient ----------
-export async function sendEnvelopeExecutedCopy({ to, envelopeTitle, pdfBytes, pdfFilename, bcc }) {
-  const title = envelopeTitle || 'document';
+// ---------- 10. New deal update → notify investor(s) ----------
+export async function sendUpdateNotice({ to, title, snippet, bcc }) {
+  const url = `${baseUrl()}/portal`;
   return send({
     to,
     bcc,
-    subject: `Fully executed: ${title}`,
+    subject: `New update · The Avenue${title ? ` — ${title}` : ''}`,
     html: shell(`
       <p>Hello,</p>
-      <p>Attached is the fully-executed copy of <strong>${escapeHtml(title)}</strong>. All required signatures are now on file.</p>
-      ${ctaButton('Open your portal', `${baseUrl()}/portal`)}
+      <p>There's a new update in your investor portal${title ? `: <strong>${escapeHtml(title)}</strong>` : ''}.</p>
+      ${snippet ? `<blockquote style="margin:14px 0;padding:10px 16px;border-left:3px solid #D4A24A;color:#444;">${escapeHtml(snippet)}</blockquote>` : ''}
+      ${ctaButton('Read the update', url)}
     `),
-    text: `Attached is the fully-executed copy of "${title}". All required signatures are now on file.\n\nPortal: ${baseUrl()}/portal`,
-    attachments: pdfBytes ? [{
-      filename: pdfFilename || 'executed.pdf',
-      content: Buffer.from(pdfBytes).toString('base64')
-    }] : undefined
+    text: `Hello,\n\nThere's a new update in your investor portal${title ? `: ${title}` : ''}.\n\n${snippet || ''}\n\nRead it here: ${url}`
   });
 }
 
 // ---------- Helpers ----------
-function formatMoney(amount) {
-  const n = Number(amount);
-  if (!Number.isFinite(n)) return '';
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-}
-
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 }

@@ -284,9 +284,6 @@
   const $body = document.getElementById('body');
   const $signedAs = document.getElementById('signed-as');
   const $bc = document.getElementById('bcWrap');
-  const LUKAS_EMAIL = 'bondysconstruction@gmail.com';
-  const KEVIN_EMAIL = 'kevin@akcapital.fund';
-  const WALKTHROUGH_EMAILS = [KEVIN_EMAIL, LUKAS_EMAIL];
   const MAIL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
   const TRASH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
   const ROSTER_COLGROUP = '<colgroup><col style="width:38%"><col style="width:14%"><col style="width:22%"><col style="width:26%"></colgroup>';
@@ -355,12 +352,6 @@
   function resetAddForm() {
     const form = document.getElementById('addInvestor');
     if (form) form.reset();
-    const zone = document.getElementById('fileZone');
-    if (zone) {
-      zone.classList.remove('has-file');
-      const label = zone.firstElementChild;
-      if (label) label.textContent = 'Blank promissory note PDF';
-    }
     const err = document.getElementById('addErr');
     if (err) err.textContent = '';
   }
@@ -407,38 +398,24 @@
     $bc.innerHTML = '';
     const investors = (roster.investors || []).filter(i => !i.deletedAt);
     const removed = (roster.investors || []).filter(i => i.deletedAt);
-    const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0), 0);
-    const numSigned = investors.filter(i => i.state === 'fully-executed').length;
-    const numAwaiting = investors.filter(i => i.state !== 'fully-executed').length;
-    const myEmail = ((me && me.email) || '').toLowerCase();
-    const canSeeWalkthrough = WALKTHROUGH_EMAILS.includes(myEmail);
+    const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0) + (Number(i.equityAmount)||0), 0);
+    const numActive = investors.filter(i => i.state === 'active').length;
+    const numInvited = investors.filter(i => i.state === 'invited').length;
 
     $body.innerHTML = `
       <h1>Investor roster</h1>
-      <p class="h1-sub">All committed investors, their signing status, and their personal folder.</p>
+      <p class="h1-sub">All committed investors, their position, and their personal folder.</p>
       <div class="summary">
         <div class="summary-cell"><div class="lbl">Investors</div><div class="val">${investors.length}</div></div>
-        <div class="summary-cell"><div class="lbl">Signed</div><div class="val">${numSigned}</div></div>
-        <div class="summary-cell"><div class="lbl">Awaiting</div><div class="val">${numAwaiting}</div></div>
+        <div class="summary-cell"><div class="lbl">Active</div><div class="val">${numActive}</div></div>
+        <div class="summary-cell"><div class="lbl">Invited</div><div class="val">${numInvited}</div></div>
         <div class="summary-cell"><div class="lbl">Committed capital</div><div class="val">${fmtMoney(totalCommit)}</div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2>Document signing</h2>
-          <div style="display:flex;gap:8px">
-            <a class="row-btn" href="/portal/admin/envelopes" style="text-decoration:none">View all envelopes →</a>
-            <a class="add-btn" href="/portal/admin/envelope" style="text-decoration:none">+ Send a document</a>
-          </div>
-        </div>
-        <p style="color:var(--muted);font-size:13px;margin:0">Send any PDF for signature to one or more recipients. Pick where the signatures go, what each signer fills in, and (optionally) the signing order — works for any document, not just promissory notes.</p>
       </div>
 
       <div class="card">
         <div class="card-head">
           <h2>All investors</h2>
           <div class="head-actions">
-            ${canSeeWalkthrough ? `<button class="walkthrough-trigger" id="howItWorks" type="button">See how it works →</button>` : ''}
             <button class="add-btn" id="addToggle" type="button">+ Add investor</button>
           </div>
         </div>
@@ -448,7 +425,7 @@
           ${ROSTER_COLGROUP}
           <thead><tr>
             <th>Name</th>
-            <th>Principal</th>
+            <th>Position</th>
             <th>Status</th>
             <th class="col-actions">Actions</th>
           </tr></thead>
@@ -461,27 +438,33 @@
         <div class="add-form" id="addForm">
           <h3>+ Add new investor</h3>
           <form id="addInvestor">
-            <div class="add-grid">
+            <div class="add-grid" style="grid-template-columns:1fr 1fr">
               <div class="field"><label>Full legal name</label><input type="text" name="name" required placeholder="Jane Doe"></div>
               <div class="field"><label>Email</label><input type="email" name="email" required placeholder="jane@example.com"></div>
-              <div class="field"><label>Principal ($)</label><input type="number" name="principal" required placeholder="125000"></div>
+            </div>
+            <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 8px">Interest (debt) — optional</div>
+            <div class="add-grid" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="field"><label>Principal ($)</label><input type="number" name="principal" placeholder="125000"></div>
               <div class="field"><label>Rate (%/yr)</label><input type="text" name="rate" value="20% per annum"></div>
               <div class="field"><label>Term (months)</label><input type="number" name="termMonths" value="20"></div>
             </div>
-            <label class="file-zone" id="fileZone" for="blankInput">
-              <div style="color:white;margin-bottom:4px">Blank promissory note PDF</div>
-              <div>Drop the investor's pre-customized PDF here, or click to browse.</div>
-              <div style="font-size:11px;margin-top:6px">Lukas will be emailed to sign as soon as this is saved.</div>
-            </label>
-            <input type="file" name="blankPdf" id="blankInput" accept="application/pdf" style="display:none" required>
+            <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 8px">Equity — optional</div>
+            <div class="add-grid" style="grid-template-columns:1fr 1fr">
+              <div class="field"><label>Equity amount ($)</label><input type="number" name="equityAmount" placeholder="100000"></div>
+              <div class="field"><label>Ownership (%)</label><input type="number" step="0.01" name="ownershipPct" placeholder="5"></div>
+            </div>
+            <p style="color:var(--muted);font-size:12px;margin:12px 0 0">Fill interest, equity, or both. We'll create their folder and email a portal invite. Terms are shown to them as read-only info.</p>
             <div class="add-actions">
               <button type="button" class="cancel-btn" id="cancelAdd">Cancel</button>
-              <button type="submit" class="add-btn">Create investor &amp; notify Lukas</button>
+              <button type="submit" class="add-btn">Create investor &amp; send invite</button>
             </div>
             <div class="err" id="addErr"></div>
           </form>
         </div>
       </div>
+
+      <div id="updatesAdmin"></div>
+      <div id="inboxAdmin"></div>
 
       ${removed.length ? `
       <div class="card" style="opacity:.7">
@@ -498,31 +481,183 @@
     document.getElementById('addToggle').addEventListener('click', () => {
       document.getElementById('addForm').classList.toggle('open');
     });
-    const $howItWorks = document.getElementById('howItWorks');
-    if ($howItWorks) $howItWorks.addEventListener('click', openWalkthrough);
     document.getElementById('cancelAdd').addEventListener('click', () => {
       resetAddForm();
       document.getElementById('addForm').classList.remove('open');
-    });
-    document.getElementById('blankInput').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      const zone = document.getElementById('fileZone');
-      if (f) zone.classList.add('has-file'), zone.firstElementChild.textContent = '✓ ' + f.name;
-      else zone.classList.remove('has-file');
     });
     document.getElementById('addInvestor').addEventListener('submit', addInvestor);
 
     document.querySelectorAll('[data-act]').forEach(el => {
       el.addEventListener('click', () => rowAction(el.dataset.act, el.dataset.email, el));
     });
+
+    loadUpdatesAdmin();
+    loadInbox();
+  }
+
+  // ---------- Updates (admin) ----------
+  async function loadUpdatesAdmin() {
+    const host = document.getElementById('updatesAdmin');
+    if (!host) return;
+    const investors = (roster.investors || []).filter(i => !i.deletedAt);
+    let updates = [];
+    try {
+      const r = await fetch('/api/portal/updates');
+      if (r.ok) { const d = await r.json(); updates = (d && d.updates) || []; }
+    } catch {}
+    const audienceName = (a) => {
+      if (a === 'all') return 'Everyone';
+      const inv = investors.find(i => (i.email||'').toLowerCase() === (a||'').toLowerCase());
+      return inv ? inv.name : a;
+    };
+    host.innerHTML = `<div class="card">
+      <div class="card-head">
+        <h2>Updates</h2>
+        <button class="add-btn" id="updToggle" type="button">+ Post update</button>
+      </div>
+      <div class="add-form" id="updForm">
+        <h3>+ Post an update</h3>
+        <div class="field" style="margin-bottom:10px"><label>Title</label><input type="text" id="updTitle" placeholder="June construction update"></div>
+        <div class="field" style="margin-bottom:10px"><label>Message</label><textarea id="updBody" rows="4" style="width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical" placeholder="Share progress, milestones, or news…"></textarea></div>
+        <div class="field" style="margin-bottom:10px"><label>Audience</label>
+          <select id="updAudience" style="width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit">
+            <option value="all">Everyone</option>
+            ${investors.map(i => `<option value="${escape(i.email)}">${escape(i.name)} (${escape(i.email)})</option>`).join('')}
+          </select>
+        </div>
+        <div class="add-actions">
+          <button type="button" class="cancel-btn" id="updCancel">Cancel</button>
+          <button type="button" class="add-btn" id="updPost">Post &amp; notify</button>
+        </div>
+        <div class="err" id="updErr"></div>
+      </div>
+      ${updates.length ? `<ul class="doc-list" style="margin-top:14px">${updates.map(u => `
+        <li>
+          <div class="doc-info">
+            <div class="doc-name" style="color:white">${escape(u.title || 'Update')} <span class="badge ${u.audience==='all'?'signed':'pending-investor'}" style="margin-left:6px">${escape(audienceName(u.audience))}</span></div>
+            <div class="doc-meta">${fmtDate(u.createdAt)}${u.body ? ' · ' + escape(u.body.slice(0,80)) + (u.body.length>80?'…':'') : ''}</div>
+          </div>
+          <button class="row-btn icon danger" data-upd-del="${escape(u.id)}" title="Delete update" aria-label="Delete update">${TRASH_ICON}</button>
+        </li>`).join('')}</ul>` : '<p style="color:var(--muted);font-size:13px;margin:14px 0 0">No updates posted yet.</p>'}
+    </div>`;
+
+    document.getElementById('updToggle').addEventListener('click', () => document.getElementById('updForm').classList.toggle('open'));
+    document.getElementById('updCancel').addEventListener('click', () => document.getElementById('updForm').classList.remove('open'));
+    document.getElementById('updPost').addEventListener('click', postUpdate);
+    host.querySelectorAll('[data-upd-del]').forEach(b => b.addEventListener('click', () => deleteUpdate(b.dataset.updDel)));
+  }
+
+  async function postUpdate() {
+    const errEl = document.getElementById('updErr'); errEl.textContent = '';
+    const title = document.getElementById('updTitle').value.trim();
+    const body = document.getElementById('updBody').value.trim();
+    const audience = document.getElementById('updAudience').value;
+    if (!title && !body) { errEl.textContent = 'Add a title or message.'; return; }
+    const btn = document.getElementById('updPost');
+    btn.disabled = true; btn.textContent = 'Posting…';
+    try {
+      const res = await fetch('/api/portal/updates', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title, body, audience })
+      });
+      const data = await res.json();
+      if (data.ok) { toast('Update posted and investors notified.', 'success'); loadUpdatesAdmin(); }
+      else { errEl.textContent = data.message || 'Could not post.'; }
+    } catch { errEl.textContent = 'Network error. Try again.'; }
+    finally { btn.disabled = false; btn.textContent = 'Post & notify'; }
+  }
+
+  async function deleteUpdate(id) {
+    const ok = await confirmDialog({ title: 'Delete update?', message: 'Investors will no longer see this update.', confirmLabel: 'Delete', danger: true });
+    if (!ok) return;
+    try {
+      const res = await fetch('/api/portal/updates/delete', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      if (data.ok) { toast('Update deleted.', 'success'); loadUpdatesAdmin(); }
+      else toast(data.message || 'Could not delete.', 'error');
+    } catch { toast('Network error. Try again.', 'error'); }
+  }
+
+  // ---------- Messages inbox (admin) ----------
+  async function loadInbox() {
+    const host = document.getElementById('inboxAdmin');
+    if (!host) return;
+    let threads = [];
+    try {
+      const r = await fetch('/api/portal/messages');
+      if (r.ok) { const d = await r.json(); threads = (d && d.threads) || []; }
+    } catch {}
+    host.innerHTML = `<div class="card">
+      <div class="card-head">
+        <h2>Messages</h2>
+        <button class="add-btn" id="broadcastToggle" type="button">✉ Message everyone</button>
+      </div>
+      <div class="add-form" id="broadcastForm">
+        <h3>Message all active investors</h3>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Goes into every active investor's conversation and emails each of them. They can reply to you privately.</p>
+        <textarea id="broadcastBody" rows="4" style="width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical" placeholder="Write a message to all investors…"></textarea>
+        <div class="add-actions">
+          <button type="button" class="cancel-btn" id="broadcastCancel">Cancel</button>
+          <button type="button" class="add-btn" id="broadcastSend">Send to everyone</button>
+        </div>
+        <div class="err" id="broadcastErr"></div>
+      </div>
+      ${threads.length ? `<ul class="doc-list" style="margin-top:14px">${threads.map(t => `
+        <li style="cursor:pointer" data-msg-open="${escape(t.email)}">
+          <div class="avatar">${escape(initials(t.name || t.email))}</div>
+          <div class="doc-info">
+            <div class="doc-name" style="color:white">${escape(t.name || t.email)} ${t.unreadFromInvestor ? `<span class="badge pending-investor" style="margin-left:6px">${t.unreadFromInvestor} new</span>` : ''}</div>
+            <div class="doc-meta">${t.lastFrom === 'admin' ? 'You: ' : ''}${escape(t.lastSnippet || '')} · ${fmtDate(t.lastMessageAt)}</div>
+          </div>
+          <span style="color:var(--gold)">Open →</span>
+        </li>`).join('')}</ul>` : '<p style="color:var(--muted);font-size:13px;margin:14px 0 0">No conversations yet. Use “Message everyone” above, or open an investor to start one.</p>'}
+    </div>`;
+    host.querySelectorAll('[data-msg-open]').forEach(li => li.addEventListener('click', () => {
+      window.location.search = '?email=' + encodeURIComponent(li.dataset.msgOpen);
+    }));
+    document.getElementById('broadcastToggle').addEventListener('click', () => document.getElementById('broadcastForm').classList.toggle('open'));
+    document.getElementById('broadcastCancel').addEventListener('click', () => document.getElementById('broadcastForm').classList.remove('open'));
+    document.getElementById('broadcastSend').addEventListener('click', sendBroadcast);
+  }
+
+  async function sendBroadcast() {
+    const errEl = document.getElementById('broadcastErr'); errEl.textContent = '';
+    const body = document.getElementById('broadcastBody').value.trim();
+    if (!body) { errEl.textContent = 'Write a message first.'; return; }
+    const ok = await confirmDialog({
+      title: 'Message all investors?',
+      message: 'This sends the message to every active investor and emails each of them.',
+      confirmLabel: 'Send to everyone'
+    });
+    if (!ok) return;
+    const btn = document.getElementById('broadcastSend');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const res = await fetch('/api/portal/messages/broadcast', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ body })
+      });
+      const data = await res.json();
+      if (data.ok) { toast(`Message sent to ${data.count} investor${data.count===1?'':'s'}.`, 'success'); loadInbox(); }
+      else { errEl.textContent = data.message || 'Could not send.'; btn.disabled = false; btn.textContent = 'Send to everyone'; }
+    } catch { errEl.textContent = 'Network error. Try again.'; btn.disabled = false; btn.textContent = 'Send to everyone'; }
   }
 
   function rowHtml(inv) {
     const badge =
       inv.deletedAt ? `<span class="badge removed">Removed</span>` :
-      inv.state === 'fully-executed' ? `<span class="badge signed">✓ Signed · ${fmtDate(inv.signedAt)}</span>` :
-      inv.state === 'awaiting-investor' ? `<span class="badge pending-investor">Awaiting investor</span>` :
-      `<span class="badge pending-lukas">Awaiting Lukas</span>`;
+      inv.state === 'active' ? `<span class="badge signed">● Active</span>` :
+      `<span class="badge pending-investor">Invited</span>`;
+    const principal = Number(inv.principal) || 0;
+    const equity = Number(inv.equityAmount) || 0;
+    const pct = Number(inv.ownershipPct) || 0;
+    const total = principal + equity;
+    const parts = [];
+    if (principal > 0) parts.push('Interest');
+    if (equity > 0 || pct > 0) parts.push('Equity' + (pct > 0 ? ` ${inv.ownershipPct}%` : ''));
+    const positionMain = total > 0 ? fmtMoney(total) : (pct > 0 ? `${inv.ownershipPct}%` : '—');
+    const positionSub = parts.join(' + ');
     return `<tr>
       <td>
         <div class="name-cell">
@@ -533,7 +668,7 @@
           </div>
         </div>
       </td>
-      <td class="principal-cell">${fmtMoney(inv.principal)}</td>
+      <td class="principal-cell">${positionMain}${positionSub ? `<div style="font-size:11px;color:var(--muted);font-variant-numeric:normal;margin-top:2px">${positionSub}</div>` : ''}</td>
       <td>${badge}</td>
       <td>
         <div class="actions-cell">
@@ -556,14 +691,22 @@
     const errEl = document.getElementById('addErr'); errEl.textContent = '';
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const payload = {
+      name: fd.get('name'), email: fd.get('email'),
+      principal: fd.get('principal'), rate: fd.get('rate'), termMonths: fd.get('termMonths'),
+      equityAmount: fd.get('equityAmount'), ownershipPct: fd.get('ownershipPct')
+    };
     const btn = form.querySelector('button[type=submit]');
-    const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & notify Lukas'; };
+    const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & send invite'; };
     btn.disabled = true; btn.textContent = 'Creating…';
     try {
-      const res = await fetch('/api/portal/add-investor', { method:'POST', body: fd });
+      const res = await fetch('/api/portal/add-investor', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
       const data = await res.json();
       if (data.ok) {
-        toast('Investor added. Lukas has been notified.', 'success');
+        toast(data.invited ? 'Investor added — invite emailed.' : 'Investor added. Invite email failed; use the resend button.', data.invited ? 'success' : 'error');
         const r = await loadRoster(); roster = r;
         renderRoster();
       } else {
@@ -640,15 +783,28 @@
     const inv = data.investor;
     document.getElementById('bcName').textContent = inv.name;
     const files = data.files || [];
-    const blankFile = files.find(f => f.name === 'blank-promissory-note.pdf');
-    const lukasFile = files.find(f => f.name === 'lukas-signed-promissory-note.pdf');
-    const signedFile = files.find(f => f.name === 'signed-promissory-note.pdf');
-    const preview = signedFile || lukasFile || blankFile;
-    const isLukas = me && me.email && me.email.toLowerCase() === LUKAS_EMAIL;
     const stateLabel =
-      inv.signedAt ? `<span style="color:#9FD6A8">✓ Fully executed · ${fmtDate(inv.signedAt)}</span>` :
-      inv.lukasSignedAt ? `<span style="color:var(--gold)">Awaiting investor signature</span>` :
-      `<span style="color:var(--gold)">Awaiting Lukas's signature</span>`;
+      inv.status === 'active' ? `<span style="color:#9FD6A8">● Active</span>` :
+      `<span style="color:var(--gold)">Invited — awaiting first sign-in</span>`;
+
+    const hasDebt = Number(inv.principal) > 0;
+    const hasEquity = Number(inv.equityAmount) > 0 || Number(inv.ownershipPct) > 0;
+    const invRow = (lbl, val, last) => `<div style="display:flex;justify-content:space-between;padding:10px 0;${last ? '' : 'border-bottom:1px solid rgba(255,255,255,0.08)'}"><span style="color:var(--muted)">${lbl}</span><span style="color:white">${val}</span></div>`;
+    let invRows = '';
+    if (hasDebt) {
+      invRows += invRow(hasEquity ? 'Interest principal' : 'Principal', fmtMoney(inv.principal));
+      invRows += invRow('Interest rate', escape(inv.rate || ''));
+      invRows += invRow('Term', escape(String(inv.termMonths || '')) + ' months');
+    }
+    if (hasEquity) {
+      if (Number(inv.equityAmount) > 0) invRows += invRow('Equity investment', fmtMoney(inv.equityAmount));
+      if (Number(inv.ownershipPct) > 0) invRows += invRow('Ownership', escape(String(inv.ownershipPct)) + '%');
+    }
+    invRows += invRow('Status', stateLabel, true);
+    const subAmounts = [];
+    if (hasDebt) subAmounts.push(fmtMoney(inv.principal) + ' interest');
+    if (Number(inv.equityAmount) > 0) subAmounts.push(fmtMoney(inv.equityAmount) + ' equity');
+    if (Number(inv.ownershipPct) > 0) subAmounts.push(escape(String(inv.ownershipPct)) + '% ownership');
 
     $body.innerHTML = `
       <div class="admin-banner">
@@ -657,23 +813,12 @@
       </div>
 
       <h1>${escape(firstName(inv.name))}'s <em style="font-family:inherit;color:var(--gold);font-style:normal">documents</em></h1>
-      <p class="h1-sub">${escape(inv.email)} · ${fmtMoney(inv.principal)} · ${escape(inv.rate||'')} · ${escape(String(inv.termMonths||''))} months</p>
+      <p class="h1-sub">${escape(inv.email)}${subAmounts.length ? ' · ' + subAmounts.join(' · ') : ''}</p>
 
       <div class="card">
-        <div class="card-head"><h2>Note terms</h2></div>
-        <div style="font-size:14px">
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Principal</span><span style="color:white">${fmtMoney(inv.principal)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Interest rate</span><span style="color:white">${escape(inv.rate||'')}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Term</span><span style="color:white">${escape(String(inv.termMonths||''))} months</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--muted)">Status</span><span style="color:white">${stateLabel}</span></div>
-        </div>
-        ${isLukas && !inv.lukasSignedAt && blankFile ? `<a href="/portal/admin/envelope" class="add-btn" style="margin-top:14px;display:inline-block;text-decoration:none">Create signing envelope →</a>` : ''}
+        <div class="card-head"><h2>Investment</h2></div>
+        <div style="font-size:14px">${invRows}</div>
       </div>
-
-      ${preview ? `<div class="card">
-        <div class="card-head"><h2>${signedFile?'Fully executed':lukasFile?'Lukas-signed (awaiting investor)':'Blank (awaiting Lukas)'}</h2></div>
-        <div class="pdf-frame"><iframe src="https://drive.google.com/file/d/${preview.id}/preview" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>
-      </div>` : ''}
 
       <div class="card">
         <div class="card-head"><h2>All documents</h2></div>
@@ -688,9 +833,67 @@
         <div class="err" id="adminUpErr"></div>
         <ul class="doc-list" id="adminDocList"></ul>
       </div>
+
+      <div id="threadAdmin"></div>
     `;
     renderDocList(files);
     wireAdminUpload(inv.email);
+    loadThreadAdmin(inv.email, inv.name);
+  }
+
+  // ---------- Message thread (admin drill-down) ----------
+  async function loadThreadAdmin(email, name) {
+    const host = document.getElementById('threadAdmin');
+    if (!host) return;
+    let messages = [];
+    try {
+      const r = await fetch('/api/portal/messages?email=' + encodeURIComponent(email));
+      if (r.ok) { const d = await r.json(); messages = (d && d.messages) || []; }
+    } catch {}
+    host.innerHTML = `<div class="card">
+      <div class="card-head"><h2>Messages with ${escape(firstName(name||email))}</h2></div>
+      <div id="adminThread" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">${renderAdminThread(messages)}</div>
+      <form id="adminMsgForm" style="display:flex;gap:10px;align-items:flex-end">
+        <textarea id="adminMsgInput" rows="2" placeholder="Reply to ${escape(firstName(name||email))}…" style="flex:1;padding:11px 13px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:10px;color:var(--text);font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        <button type="submit" class="add-btn" id="adminMsgSend" style="padding:12px 20px">Send</button>
+      </form>
+      <div class="err" id="adminMsgErr"></div>
+    </div>`;
+    const form = document.getElementById('adminMsgForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('adminMsgInput');
+      const errEl = document.getElementById('adminMsgErr');
+      const btn = document.getElementById('adminMsgSend');
+      const body = (input.value || '').trim();
+      errEl.textContent = '';
+      if (!body) return;
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const res = await fetch('/api/portal/messages', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, body })
+        });
+        const data = await res.json();
+        if (data.ok) { input.value = ''; loadThreadAdmin(email, name); }
+        else errEl.textContent = data.message || 'Could not send.';
+      } catch { errEl.textContent = 'Network error. Try again.'; }
+      finally { btn.disabled = false; btn.textContent = 'Send'; }
+    });
+  }
+
+  function renderAdminThread(messages) {
+    if (!messages.length) return '<div style="color:var(--muted);font-style:italic;font-size:13px">No messages yet.</div>';
+    return messages.map(m => {
+      const mine = m.from === 'admin';
+      const align = mine ? 'flex-end' : 'flex-start';
+      const bg = mine ? 'rgba(212,162,74,0.16)' : 'rgba(255,255,255,0.06)';
+      const who = mine ? 'You' : 'Investor';
+      return `<div style="align-self:${align};max-width:80%">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px;text-align:${mine?'right':'left'}">${who} · ${fmtDate(m.createdAt)}</div>
+        <div style="background:${bg};border:1px solid var(--hairline);border-radius:12px;padding:10px 13px;font-size:14px;white-space:pre-wrap">${escape(m.body)}</div>
+      </div>`;
+    }).join('');
   }
 
   function renderDocList(files) {
@@ -699,9 +902,8 @@
     if (!files.length) { list.innerHTML = '<li class="empty">No documents yet.</li>'; return; }
     list.innerHTML = files.map(f => {
       const ext = fileExt(f.name);
-      const isSigned = f.name === 'signed-promissory-note.pdf';
       return `<li>
-        <span class="doc-tag${isSigned?' signed':''}">${escape(ext||'FILE')}</span>
+        <span class="doc-tag">${escape(ext||'FILE')}</span>
         <div class="doc-info">
           <a class="doc-name" href="${escape(f.url)}" target="_blank" rel="noopener">${escape(f.name)}</a>
           <div class="doc-meta">${fmtDate(f.createdTime)}</div>
@@ -784,176 +986,6 @@
     }
   }
 
-  // ---------- Walkthrough ----------
-  const WALKTHROUGH_STEPS = [
-    {
-      title: 'Add the investor',
-      narr: `Fill in their details and drop in the pre-filled blank promissory note PDF. As soon as you save, we create their Drive folder and email Lukas to sign.`,
-      mock: `
-        <div class="wt-mock wt-mock-form">
-          <div class="wt-mock-label">+ Add investor</div>
-          <div class="wt-field"><div class="wt-field-label">Full legal name</div><div class="wt-field-val">Jane Doe</div></div>
-          <div class="wt-field"><div class="wt-field-label">Email</div><div class="wt-field-val">jane@example.com</div></div>
-          <div class="wt-grid">
-            <div class="wt-field"><div class="wt-field-label">Principal</div><div class="wt-field-val">$125,000</div></div>
-            <div class="wt-field"><div class="wt-field-label">Rate</div><div class="wt-field-val">20% per annum</div></div>
-          </div>
-          <div class="wt-field"><div class="wt-field-label">Term</div><div class="wt-field-val">20 months</div></div>
-          <div class="wt-drop">✓ jane-doe-promissory-note.pdf</div>
-        </div>
-      `
-    },
-    {
-      title: 'Lukas gets notified',
-      narr: `Lukas receives an email the moment the investor is created. One click takes him to the admin signature queue.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To Lukas Bondy</div>
-          <div class="wt-em-subj">New promissory note awaiting your signature — Jane Doe</div>
-          <div class="wt-em-body">Hi Lukas,<br><br>Kevin has added <strong>Jane Doe</strong> ($125,000) to the investor portal. Open your admin dashboard to sign as Debtor and Guarantor.</div>
-          <span class="wt-em-cta">Open signature queue</span>
-        </div>
-      `
-    },
-    {
-      title: 'Lukas signs as Debtor & Guarantor',
-      narr: `Lukas reviews the blank PDF and signs once. We overlay his signature and save it as <strong>lukas-signed-promissory-note.pdf</strong> in Jane's folder.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-mock-label">/portal/admin/envelope</div>
-          <div class="wt-pdf">PDF preview</div>
-          <span class="wt-sign-btn">Place fields &amp; send →</span>
-        </div>
-        <div class="wt-mock wt-mock-badges">
-          <span class="badge pending-lukas">Awaiting Lukas</span>
-          <span class="wt-arrow">→</span>
-          <span class="badge pending-investor">Awaiting investor</span>
-        </div>
-      `
-    },
-    {
-      title: 'Investor is invited to counter-sign',
-      narr: `Jane gets her ready-to-sign email. If she hasn't set a portal password yet, this same email doubles as her setup link.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
-          <div class="wt-em-subj">Your promissory note for The Avenue is ready to sign</div>
-          <div class="wt-em-body">Hello Jane,<br><br>Lukas Bondy has signed his portion (Debtor and Guarantor) of your <strong>$125,000</strong> promissory note. The document is now ready for your counter-signature as Creditor.</div>
-          <span class="wt-em-cta">Set password &amp; sign your note</span>
-        </div>
-      `
-    },
-    {
-      title: 'Investor counter-signs in their portal',
-      narr: `Jane reviews Lukas's signed copy in her portal and counter-signs as Creditor. The fully-executed PDF is saved as <strong>signed-promissory-note.pdf</strong>.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-mock-label">/portal — Jane's documents</div>
-          <div class="wt-doc"><span class="wt-doc-tag">PDF</span><span class="wt-doc-name">lukas-signed-promissory-note.pdf</span><span class="badge pending-investor">Ready</span></div>
-          <div class="wt-sign-row"><span class="wt-sign-btn">Counter-sign as Creditor →</span></div>
-        </div>
-        <div class="wt-mock wt-mock-badges">
-          <span class="badge pending-investor">Awaiting investor</span>
-          <span class="wt-arrow">→</span>
-          <span class="badge signed">✓ Signed</span>
-        </div>
-      `
-    },
-    {
-      title: 'Executed copy is delivered',
-      narr: `Jane receives the fully-executed PDF, and you get a heads-up that it's time to send wire instructions.`,
-      mock: `
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>Kevin @ The Avenue</strong> · To jane@example.com</div>
-          <div class="wt-em-subj">Your fully-executed promissory note</div>
-          <div class="wt-em-body">Hello Jane,<br><br>Attached is your fully-executed <strong>$125,000</strong> promissory note for The Avenue at Fountain Hills. Lukas Bondy has signed as Debtor and Guarantor; your counter-signature as Creditor is now on file.</div>
-          <span class="wt-em-attach"><span class="wt-em-tag">PDF</span>signed-promissory-note.pdf</span>
-        </div>
-        <div class="wt-mock">
-          <div class="wt-em-from">From <strong>The Avenue Portal</strong> · To Kevin@AKCapital.fund</div>
-          <div class="wt-em-subj">Jane Doe signed their promissory note ($125,000)</div>
-          <div class="wt-em-body">Kevin — <strong>Jane Doe</strong> just counter-signed their <strong>$125,000</strong> promissory note. Time to send wire instructions.</div>
-        </div>
-      `
-    }
-  ];
-
-  function openWalkthrough() {
-    let idx = 0;
-    const root = document.createElement('div');
-    root.className = 'wt-backdrop';
-    root.innerHTML = `
-      <div class="wt-modal" role="dialog" aria-modal="true" aria-label="Signing flow walkthrough">
-        <div class="wt-head">
-          <div class="wt-dots">${WALKTHROUGH_STEPS.map((_,i) => `<button class="wt-dot" data-i="${i}" type="button" aria-label="Step ${i+1}"></button>`).join('')}</div>
-          <div class="wt-meta">
-            <span class="wt-counter" id="wtCounter"></span>
-            <button class="wt-close" id="wtClose" type="button" aria-label="Close walkthrough">×</button>
-          </div>
-        </div>
-        <div class="wt-body" id="wtBody">
-          ${WALKTHROUGH_STEPS.map((s,i) => `
-            <section class="wt-step" data-i="${i}">
-              <h3 class="wt-title">${escape(s.title)}</h3>
-              <p class="wt-narr">${s.narr}</p>
-              ${s.mock}
-            </section>
-          `).join('')}
-        </div>
-        <div class="wt-foot">
-          <button class="wt-btn" id="wtPrev" type="button">← Back</button>
-          <button class="wt-btn primary" id="wtNext" type="button">Next →</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(root);
-    document.body.classList.add('modal-lock');
-    const previouslyFocused = document.activeElement;
-
-    const $prev = root.querySelector('#wtPrev');
-    const $next = root.querySelector('#wtNext');
-    const $counter = root.querySelector('#wtCounter');
-    const $body = root.querySelector('#wtBody');
-    const $dots = root.querySelectorAll('.wt-dot');
-    const $steps = root.querySelectorAll('.wt-step');
-    $next.focus();
-
-    function render() {
-      $steps.forEach((el,i) => el.classList.toggle('is-active', i === idx));
-      $dots.forEach((el,i) => {
-        el.classList.toggle('is-active', i === idx);
-        el.classList.toggle('is-done', i < idx);
-      });
-      $counter.textContent = `Step ${idx+1} of ${WALKTHROUGH_STEPS.length}`;
-      $prev.disabled = idx === 0;
-      $next.textContent = idx === WALKTHROUGH_STEPS.length - 1 ? 'Done' : 'Next →';
-      $body.scrollTop = 0;
-    }
-
-    function close() {
-      document.removeEventListener('keydown', onKey);
-      document.body.classList.remove('modal-lock');
-      root.remove();
-      try { previouslyFocused && previouslyFocused.focus && previouslyFocused.focus(); } catch {}
-    }
-    function onKey(e) {
-      if (e.key === 'Escape') close();
-      else if (e.key === 'ArrowRight' && idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
-      else if (e.key === 'ArrowLeft' && idx > 0) { idx--; render(); }
-    }
-
-    $prev.addEventListener('click', () => { if (idx > 0) { idx--; render(); } });
-    $next.addEventListener('click', () => {
-      if (idx < WALKTHROUGH_STEPS.length - 1) { idx++; render(); }
-      else close();
-    });
-    root.querySelector('#wtClose').addEventListener('click', close);
-    root.addEventListener('click', (e) => { if (e.target === root) close(); });
-    $dots.forEach(d => d.addEventListener('click', () => { idx = Number(d.dataset.i); render(); }));
-    document.addEventListener('keydown', onKey);
-
-    render();
-  }
 
   init();
 </script>

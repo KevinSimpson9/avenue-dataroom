@@ -1,22 +1,9 @@
 // /api/file - Resolves a document key to a Drive viewer URL or, for folder-typed slots,
 // returns the list of files inside the folder so the room can render an in-app picker.
 import { verifySession } from './_auth.js';
+import { verifyPortalSession } from './_portal-auth.js';
 import { google } from 'googleapis';
-
-const DOC_MAP = {
-  'deck':         'DRIVE_FILE_DECK',
-  'appraisal':    'DRIVE_FILE_APPRAISAL',
-  'bov':          'DRIVE_FILE_BOV',
-  'casa':         'DRIVE_FILE_CASA',
-  'approvals':    'DRIVE_FILE_APPROVALS',
-  'budget':       'DRIVE_FILE_BUDGET',
-  'plans':        'DRIVE_FILE_PLANS',
-  'track-record': 'DRIVE_FILE_TRACK_RECORD'
-};
-
-function fileViewerUrl(id) {
-  return `https://drive.google.com/file/d/${id}/view`;
-}
+import { DOC_MAP, fileViewerUrl } from './_deal-docs.js';
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -70,7 +57,9 @@ async function listFolderItems(rootFolderId) {
 }
 
 export default async function handler(req, res) {
-  if (!verifySession(req)) {
+  // The document room is open to a valid data-room session OR a portal admin.
+  const portal = verifyPortalSession(req);
+  if (!verifySession(req) && !(portal && portal.role === 'admin')) {
     return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
 
