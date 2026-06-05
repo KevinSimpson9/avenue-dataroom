@@ -1,6 +1,15 @@
 # The Avenue · Investor Data Room
 
-A password-protected investor data room. Hosted on Vercel (free), connected to GitHub for auto-deploy, with file uploads going straight to your Google Drive.
+A password-protected investor site. Hosted on Vercel (free), connected to GitHub for auto-deploy, with files going straight to your Google Drive.
+
+> **Current state (closed deal).** The public data room is **closed**: entering the
+> gate password (`Psalm23`) shows a "this deal is closed — stay tuned" page rather
+> than the documents. Committed investors use the **Investor Portal** (`/portal`) —
+> a private hub with a link to the full data room, an investment summary, document
+> sharing/uploads, deal **updates**, and two-way **messages** with the admin. The
+> admin dashboard (`/portal/admin`) is where you add investors, post updates, and
+> reply to messages. There is **no document signing** in the portal. The original
+> NDA self-signup and promissory-note signing flows have been removed.
 
 ---
 
@@ -99,7 +108,7 @@ You don't need to upload all docs upfront. Whatever's missing will show "Documen
 
 | Variable Name | Value |
 |---|---|
-| `DATA_ROOM_PASSWORD` | Whatever password you want investors to use (e.g., `Avenue2026!`) |
+| `DATA_ROOM_PASSWORD` | Gate password. For the closed deal this is `Psalm23` (entering it shows the closed page). |
 | `SESSION_SECRET` | A long random string. Run `openssl rand -base64 48` in Terminal to get one |
 | `GOOGLE_DRIVE_UPLOAD_FOLDER_ID` | The folder ID from Part 4 |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | The entire contents of the JSON file from Part 3 (paste the whole thing) |
@@ -120,9 +129,10 @@ Wait about 90 seconds. Vercel will give you a URL like `avenue-dataroom-xyz.verc
 ### Part 7 — Test it
 
 1. Open the Vercel URL
-2. Type your password → should land in the data room
-3. Try clicking the deck → should open in Drive
-4. Try uploading a test file → should appear in your "Avenue Investor Uploads" Drive folder
+2. Type the gate password (`Psalm23`) → should land on the "deal is closed" page
+3. Go to `/portal/sign-in` and sign in as an admin → the admin dashboard loads
+4. From the dashboard, **View the data room →** opens the real documents; clicking the deck opens it in Drive
+5. Add a test investor → they receive a portal invite email and appear as "Invited"
 
 If something breaks, check the Vercel dashboard → your project → Logs tab. Errors show up there.
 
@@ -182,21 +192,31 @@ Open your "Avenue Investor Uploads" folder in Google Drive. Each file has a time
 ## File structure
 
 ```
-avenue-dataroom-v2/
-├── .github/                      # (empty, optional)
+avenue-dataroom/
 ├── api/                          # Vercel serverless functions
-│   ├── _auth.js                 # Shared session verification
-│   ├── unlock.js                # POST /api/unlock - password check
-│   ├── logout.js                # GET /api/logout - clear session
-│   ├── room.js                  # GET /room - serves protected page
+│   ├── _auth.js                 # Data-room session verification
+│   ├── _deal-docs.js            # Shared deal-document map (file.js)
+│   ├── _portal-auth.js          # Portal sessions, password hashing, magic links
+│   ├── _portal-registry.js      # Investor/admin registry (Drive JSON)
+│   ├── _portal-updates.js       # Deal updates store (Drive JSON)
+│   ├── _portal-messages.js      # Investor↔admin messages store (Drive JSON)
+│   ├── _portal-email.js         # Resend email templates
+│   ├── unlock.js                # POST /api/unlock - gate password check
+│   ├── logout.js                # GET /api/logout - clear data-room session
+│   ├── room.js                  # GET /room - real docs for portal users, closed page otherwise
 │   ├── file.js                  # GET /api/file - resolves Drive links
-│   └── upload.js                # POST /api/upload - saves to Drive
+│   ├── upload.js                # POST /api/upload - saves to Drive
+│   └── portal/[[...slug]].js    # All Investor Portal routes (one function)
 ├── public/
 │   ├── index.html               # The gate (password entry)
-│   ├── room.html                # The data room (protected)
-│   └── styles.css               # All styles
+│   ├── closed.html              # "This deal is closed" page (shown after the gate)
+│   ├── room.html                # The real data room (portal users only)
+│   ├── portal.html              # Investor portal hub
+│   ├── portal-admin.html        # Admin dashboard
+│   ├── portal-signin.html       # Portal sign-in
+│   ├── portal-setup.html        # Portal password setup (invite link)
+│   └── styles.css               # Shared gate/room styles
 ├── .env.example                 # Template for environment variables
-├── .gitignore
 ├── package.json
 ├── vercel.json                  # Routing + security headers
 └── README.md

@@ -6,6 +6,15 @@ End result: `dataroom.<your-project>.com` — investors land on a branded passwo
 
 Estimated time end-to-end: **3–4 hours** for the first project, **45–60 minutes** for each one after.
 
+> **Note on the current Avenue deployment.** This guide documents the original
+> *NDA-gated, self-signup* template. The live Avenue deployment has since moved to a
+> **closed** model: the public gate password shows a "deal is closed" page, the NDA
+> self-signup and all document-signing (promissory note / envelopes) have been
+> removed, and committed investors use a private **Investor Portal** (`/portal`) with
+> a data-room link, updates, messages, and document sharing. Sections about the NDA
+> flow (3.7) and the `sign-nda` / promissory-note files below describe the original
+> template and no longer reflect the live app — see the README for the current state.
+
 ---
 
 ## Table of contents
@@ -495,21 +504,27 @@ What does what, in case you need to dig in:
 
 | File | Purpose |
 |---|---|
-| `public/index.html` | Public gate page — password input, NDA modal, "forgot password" form. |
-| `public/room.html` | Protected investor room — hero, stats, overview, doc tiles, upload, contact. |
-| `public/styles.css` | Shared styles for both pages. Brand tokens at top (colors, fonts). |
-| `public/hero-rendering.jpg` | Hero background image on `/room`. |
-| `api/unlock.js` | Verifies password, sets signed session cookie. |
-| `api/sign-nda.js` | Receives NDA form, builds PDF, saves to Drive, sends confirmation email, sets session cookie, appends to registry. |
-| `api/_nda-content.js` | Builds the signed NDA PDF (legal text + form data). |
-| `api/_nda-registry.js` | Reads/writes `nda-registry.json` in the NDA folder — the authoritative allowlist. Auto-bootstraps from existing PDF descriptions on first read. |
-| `api/forgot-password.js` | Looks up email in registry. If present → re-emails password. If not → frontend opens NDA modal. |
+| `public/index.html` | Public gate page — password input only (NDA flow removed). |
+| `public/closed.html` | "This deal is closed" page shown after entering the gate password. |
+| `public/room.html` | The real data room — hero, stats, overview, doc tiles. Served only to signed-in portal users. |
+| `public/portal.html` | Investor portal hub — data-room link, investment summary, documents, updates, messages. |
+| `public/portal-admin.html` | Admin dashboard — roster, add investor, updates, messages inbox. |
+| `public/portal-signin.html` / `public/portal-setup.html` | Portal sign-in and invite password setup. |
+| `public/styles.css` | Shared gate/room styles. Brand tokens at top (colors, fonts). |
+| `public/hero-rendering.jpg` | Hero background image. |
+| `api/unlock.js` | Verifies the gate password, sets the data-room session cookie. |
 | `api/file.js` | Resolves a `data-doc` key to a Drive viewer URL or folder listing. Reads `DRIVE_FILE_*` env vars. |
-| `api/upload.js` | Receives investor uploads, saves to the uploads Drive folder. |
-| `api/room.js` | Serves `/room` — checks session cookie, returns `room.html`. |
-| `api/logout.js` | Clears session cookie. |
-| `api/_auth.js` | Session signing / verification helpers. |
-| `vercel.json` | Routes (`/room` → `/api/room`), security headers. |
+| `api/upload.js` | Receives uploads, saves to the uploads Drive folder. |
+| `api/room.js` | Serves `/room` — real docs for portal users (investor or admin), the closed page otherwise. |
+| `api/logout.js` | Clears the data-room session cookie. |
+| `api/_auth.js` | Data-room session signing / verification helpers. |
+| `api/_deal-docs.js` | Shared deal-document map used by `file.js`. |
+| `api/portal/[[...slug]].js` | Single function handling **all** Investor Portal routes (auth, roster, folders, uploads, updates, messages, add-investor, data-room bridge). |
+| `api/_portal-auth.js` | Portal sessions, scrypt password hashing, single-use invite/reset tokens. |
+| `api/_portal-registry.js` | Investor + admin registry (`investor-registry.json` on Drive). |
+| `api/_portal-updates.js` / `api/_portal-messages.js` | Drive-backed JSON stores for updates and messages. |
+| `api/_portal-email.js` | Resend email templates (invite, message + update notifications). |
+| `vercel.json` | Routes (`/room`, `/portal/*`), security headers. |
 | `.env.example` | Template of env vars (copy to `.env.local` for local dev). |
 
 ---
