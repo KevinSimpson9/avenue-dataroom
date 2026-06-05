@@ -398,13 +398,13 @@
     $bc.innerHTML = '';
     const investors = (roster.investors || []).filter(i => !i.deletedAt);
     const removed = (roster.investors || []).filter(i => i.deletedAt);
-    const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0), 0);
+    const totalCommit = investors.reduce((s, i) => s + (Number(i.principal)||0) + (Number(i.equityAmount)||0), 0);
     const numActive = investors.filter(i => i.state === 'active').length;
     const numInvited = investors.filter(i => i.state === 'invited').length;
 
     $body.innerHTML = `
       <h1>Investor roster</h1>
-      <p class="h1-sub">All committed investors, their signing status, and their personal folder.</p>
+      <p class="h1-sub">All committed investors, their position, and their personal folder.</p>
       <div class="summary">
         <div class="summary-cell"><div class="lbl">Investors</div><div class="val">${investors.length}</div></div>
         <div class="summary-cell"><div class="lbl">Active</div><div class="val">${numActive}</div></div>
@@ -425,7 +425,7 @@
           ${ROSTER_COLGROUP}
           <thead><tr>
             <th>Name</th>
-            <th>Principal</th>
+            <th>Position</th>
             <th>Status</th>
             <th class="col-actions">Actions</th>
           </tr></thead>
@@ -438,14 +438,22 @@
         <div class="add-form" id="addForm">
           <h3>+ Add new investor</h3>
           <form id="addInvestor">
-            <div class="add-grid">
+            <div class="add-grid" style="grid-template-columns:1fr 1fr">
               <div class="field"><label>Full legal name</label><input type="text" name="name" required placeholder="Jane Doe"></div>
               <div class="field"><label>Email</label><input type="email" name="email" required placeholder="jane@example.com"></div>
-              <div class="field"><label>Principal ($)</label><input type="number" name="principal" required placeholder="125000"></div>
+            </div>
+            <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 8px">Interest (debt) — optional</div>
+            <div class="add-grid" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="field"><label>Principal ($)</label><input type="number" name="principal" placeholder="125000"></div>
               <div class="field"><label>Rate (%/yr)</label><input type="text" name="rate" value="20% per annum"></div>
               <div class="field"><label>Term (months)</label><input type="number" name="termMonths" value="20"></div>
             </div>
-            <p style="color:var(--muted);font-size:12px;margin:12px 0 0">We'll create their folder and email them a portal invite to set a password. Terms are shown to them as read-only info.</p>
+            <div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 8px">Equity — optional</div>
+            <div class="add-grid" style="grid-template-columns:1fr 1fr">
+              <div class="field"><label>Equity amount ($)</label><input type="number" name="equityAmount" placeholder="100000"></div>
+              <div class="field"><label>Ownership (%)</label><input type="number" step="0.01" name="ownershipPct" placeholder="5"></div>
+            </div>
+            <p style="color:var(--muted);font-size:12px;margin:12px 0 0">Fill interest, equity, or both. We'll create their folder and email a portal invite. Terms are shown to them as read-only info.</p>
             <div class="add-actions">
               <button type="button" class="cancel-btn" id="cancelAdd">Cancel</button>
               <button type="submit" class="add-btn">Create investor &amp; send invite</button>
@@ -603,6 +611,15 @@
       inv.deletedAt ? `<span class="badge removed">Removed</span>` :
       inv.state === 'active' ? `<span class="badge signed">● Active</span>` :
       `<span class="badge pending-investor">Invited</span>`;
+    const principal = Number(inv.principal) || 0;
+    const equity = Number(inv.equityAmount) || 0;
+    const pct = Number(inv.ownershipPct) || 0;
+    const total = principal + equity;
+    const parts = [];
+    if (principal > 0) parts.push('Interest');
+    if (equity > 0 || pct > 0) parts.push('Equity' + (pct > 0 ? ` ${inv.ownershipPct}%` : ''));
+    const positionMain = total > 0 ? fmtMoney(total) : (pct > 0 ? `${inv.ownershipPct}%` : '—');
+    const positionSub = parts.join(' + ');
     return `<tr>
       <td>
         <div class="name-cell">
@@ -613,7 +630,7 @@
           </div>
         </div>
       </td>
-      <td class="principal-cell">${fmtMoney(inv.principal)}</td>
+      <td class="principal-cell">${positionMain}${positionSub ? `<div style="font-size:11px;color:var(--muted);font-variant-numeric:normal;margin-top:2px">${positionSub}</div>` : ''}</td>
       <td>${badge}</td>
       <td>
         <div class="actions-cell">
@@ -638,7 +655,8 @@
     const fd = new FormData(form);
     const payload = {
       name: fd.get('name'), email: fd.get('email'),
-      principal: fd.get('principal'), rate: fd.get('rate'), termMonths: fd.get('termMonths')
+      principal: fd.get('principal'), rate: fd.get('rate'), termMonths: fd.get('termMonths'),
+      equityAmount: fd.get('equityAmount'), ownershipPct: fd.get('ownershipPct')
     };
     const btn = form.querySelector('button[type=submit]');
     const restore = () => { btn.disabled = false; btn.textContent = 'Create investor & send invite'; };
@@ -731,6 +749,25 @@
       inv.status === 'active' ? `<span style="color:#9FD6A8">● Active</span>` :
       `<span style="color:var(--gold)">Invited — awaiting first sign-in</span>`;
 
+    const hasDebt = Number(inv.principal) > 0;
+    const hasEquity = Number(inv.equityAmount) > 0 || Number(inv.ownershipPct) > 0;
+    const invRow = (lbl, val, last) => `<div style="display:flex;justify-content:space-between;padding:10px 0;${last ? '' : 'border-bottom:1px solid rgba(255,255,255,0.08)'}"><span style="color:var(--muted)">${lbl}</span><span style="color:white">${val}</span></div>`;
+    let invRows = '';
+    if (hasDebt) {
+      invRows += invRow(hasEquity ? 'Interest principal' : 'Principal', fmtMoney(inv.principal));
+      invRows += invRow('Interest rate', escape(inv.rate || ''));
+      invRows += invRow('Term', escape(String(inv.termMonths || '')) + ' months');
+    }
+    if (hasEquity) {
+      if (Number(inv.equityAmount) > 0) invRows += invRow('Equity investment', fmtMoney(inv.equityAmount));
+      if (Number(inv.ownershipPct) > 0) invRows += invRow('Ownership', escape(String(inv.ownershipPct)) + '%');
+    }
+    invRows += invRow('Status', stateLabel, true);
+    const subAmounts = [];
+    if (hasDebt) subAmounts.push(fmtMoney(inv.principal) + ' interest');
+    if (Number(inv.equityAmount) > 0) subAmounts.push(fmtMoney(inv.equityAmount) + ' equity');
+    if (Number(inv.ownershipPct) > 0) subAmounts.push(escape(String(inv.ownershipPct)) + '% ownership');
+
     $body.innerHTML = `
       <div class="admin-banner">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -738,16 +775,11 @@
       </div>
 
       <h1>${escape(firstName(inv.name))}'s <em style="font-family:inherit;color:var(--gold);font-style:normal">documents</em></h1>
-      <p class="h1-sub">${escape(inv.email)} · ${fmtMoney(inv.principal)} · ${escape(inv.rate||'')} · ${escape(String(inv.termMonths||''))} months</p>
+      <p class="h1-sub">${escape(inv.email)}${subAmounts.length ? ' · ' + subAmounts.join(' · ') : ''}</p>
 
       <div class="card">
         <div class="card-head"><h2>Investment</h2></div>
-        <div style="font-size:14px">
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Principal</span><span style="color:white">${fmtMoney(inv.principal)}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Interest rate</span><span style="color:white">${escape(inv.rate||'')}</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><span style="color:var(--muted)">Term</span><span style="color:white">${escape(String(inv.termMonths||''))} months</span></div>
-          <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--muted)">Status</span><span style="color:white">${stateLabel}</span></div>
-        </div>
+        <div style="font-size:14px">${invRows}</div>
       </div>
 
       <div class="card">

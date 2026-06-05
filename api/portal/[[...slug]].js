@@ -140,6 +140,12 @@ function parsePrincipal(v) {
   const n = Math.round(parseFloat(String(v).replace(/[^0-9.]/g, '')));
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+// Ownership percentage: a number in (0, 100]. Allows decimals. Returns null if absent/invalid.
+function parsePercent(v) {
+  if (v == null || String(v).trim() === '') return null;
+  const n = parseFloat(String(v).replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) && n > 0 && n <= 100 ? Math.round(n * 100) / 100 : null;
+}
 
 // ---------- Page renderers ----------
 
@@ -214,6 +220,8 @@ function getMe(req, res) {
       principal: entry.principal,
       rate: entry.rate,
       termMonths: entry.termMonths,
+      equityAmount: entry.equityAmount || null,
+      ownershipPct: entry.ownershipPct || null,
       folderId: entry.folderId,
       status: entry.deletedAt ? 'removed' : (entry.passwordHash ? 'active' : 'invited'),
       addedAt: entry.addedAt || entry.passwordCreatedAt || null,
@@ -550,6 +558,7 @@ async function getRoster(req, res) {
   }
   const investors = registry.entries.filter(e => e.role === 'investor').map(e => ({
     name: e.name, email: e.email, principal: e.principal, rate: e.rate, termMonths: e.termMonths,
+    equityAmount: e.equityAmount || null, ownershipPct: e.ownershipPct || null,
     folderId: e.folderId,
     passwordCreatedAt: e.passwordCreatedAt || null, addedAt: e.addedAt || null, deletedAt: e.deletedAt || null,
     state: e.deletedAt ? 'removed' : (e.passwordHash ? 'active' : 'invited')
@@ -587,6 +596,7 @@ async function getFolder(req, res) {
     investor: {
       name: entry.name, email: entry.email, principal: entry.principal, rate: entry.rate,
       termMonths: entry.termMonths,
+      equityAmount: entry.equityAmount || null, ownershipPct: entry.ownershipPct || null,
       status: entry.deletedAt ? 'removed' : (entry.passwordHash ? 'active' : 'invited'),
       addedAt: entry.addedAt || null
     },
@@ -650,13 +660,19 @@ async function postAddInvestor(req, res) {
   const body = await readJsonBody(req);
   const name = String(body?.name || '').trim();
   const email = normalizeEmail(body?.email);
+  // Debt (interest) terms — optional. Equity terms — optional. An investor can have
+  // either or both (hybrid). At least one form of investment is required.
   const principal = parsePrincipal(body?.principal);
   const rate = String(body?.rate || '20% per annum').trim();
   const termMonths = parseInt(String(body?.termMonths || '20'), 10) || 20;
+  const equityAmount = parsePrincipal(body?.equityAmount);
+  const ownershipPct = parsePercent(body?.ownershipPct);
 
   if (!name) return res.status(400).json({ ok: false, message: 'Name is required.' });
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, message: 'Valid email is required.' });
-  if (!principal) return res.status(400).json({ ok: false, message: 'Principal must be a positive number.' });
+  if (!principal && !equityAmount && !ownershipPct) {
+    return res.status(400).json({ ok: false, message: 'Enter an interest principal and/or an equity amount.' });
+  }
 
   let registry, fileId, drive;
   try { ({ registry, fileId, drive } = await loadRegistry()); }
@@ -678,7 +694,9 @@ async function postAddInvestor(req, res) {
 
   registry.entries.push({
     role: 'investor',
-    name, email, principal, rate, termMonths,
+    name, email,
+    principal: principal || null, rate: principal ? rate : null, termMonths: principal ? termMonths : null,
+    equityAmount: equityAmount || null, ownershipPct: ownershipPct || null,
     folderId: folder.id,
     passwordHash: null, passwordCreatedAt: null, resetNonce: null,
     addedAt: new Date().toISOString(), deletedAt: null
@@ -693,7 +711,7 @@ async function postAddInvestor(req, res) {
     ok: true,
     invited: !!invite.sent,
     inviteError: invite.sent ? null : (invite.reason || 'Email failed'),
-    investor: { name, email, principal, folderId: folder.id }
+    investor: { name, email, principal, equityAmount, ownershipPct, folderId: folder.id }
   });
 }
 

@@ -207,6 +207,8 @@
       principal: r.principal || 0,
       rate: r.rate || '',
       termMonths: r.termMonths || '',
+      equityAmount: r.equityAmount || 0,
+      ownershipPct: r.ownershipPct || 0,
       folderId: r.folderId || null,
       status: r.status || 'active',
       addedAt: r.addedAt || null,
@@ -278,18 +280,23 @@
 
     let html = '';
 
-    // Investment summary
-    const principalSet = Number(inv.principal) > 0;
-    if (principalSet) {
-      html += `
-        <div class="card">
-          <h2>Your investment</h2>
-          <div class="terms-row"><span class="lbl">Principal</span><span class="val">${fmtMoney(inv.principal)}</span></div>
+    // Investment summary — shows interest (debt) rows, equity rows, or both.
+    const hasDebt = Number(inv.principal) > 0;
+    const hasEquity = Number(inv.equityAmount) > 0 || Number(inv.ownershipPct) > 0;
+    if (hasDebt || hasEquity) {
+      let rows = '';
+      if (hasDebt) {
+        rows += `
+          <div class="terms-row"><span class="lbl">${hasEquity ? 'Interest principal' : 'Principal'}</span><span class="val">${fmtMoney(inv.principal)}</span></div>
           <div class="terms-row"><span class="lbl">Interest rate</span><span class="val">${escape(inv.rate||'—')}</span></div>
-          <div class="terms-row"><span class="lbl">Term</span><span class="val">${inv.termMonths ? escape(String(inv.termMonths)) + ' months' : '—'}</span></div>
-          <div class="terms-row"><span class="lbl">Status</span><span class="val"><span style="color:#9FD6A8">● Active</span></span></div>
-        </div>
-      `;
+          <div class="terms-row"><span class="lbl">Term</span><span class="val">${inv.termMonths ? escape(String(inv.termMonths)) + ' months' : '—'}</span></div>`;
+      }
+      if (hasEquity) {
+        if (Number(inv.equityAmount) > 0) rows += `<div class="terms-row"><span class="lbl">Equity investment</span><span class="val">${fmtMoney(inv.equityAmount)}</span></div>`;
+        if (Number(inv.ownershipPct) > 0) rows += `<div class="terms-row"><span class="lbl">Ownership</span><span class="val">${escape(String(inv.ownershipPct))}%</span></div>`;
+      }
+      rows += `<div class="terms-row"><span class="lbl">Status</span><span class="val"><span style="color:#9FD6A8">● Active</span></span></div>`;
+      html += `<div class="card"><h2>Your investment</h2>${rows}</div>`;
     }
 
     // Your documents (uploads + shared files)
