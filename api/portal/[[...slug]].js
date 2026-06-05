@@ -100,6 +100,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       if (route === 'login') return await postLogin(req, res);
       if (route === 'messages') return await postMessage(req, res);
+      if (route === 'messages/broadcast') return await postBroadcast(req, res);
       if (route === 'updates') return await postUpdate(req, res);
       if (route === 'updates/delete') return await postUpdateDelete(req, res);
       if (route === 'setup') return await postSetup(req, res);
@@ -429,6 +430,38 @@ async function postMessage(req, res) {
   sendNewMessageToAdmin({ to: KEVIN_EMAIL, investorName, investorEmail: session.email, snippet: text.slice(0, 280) })
     .catch(err => console.warn('messages: admin notice failed', err));
   return res.status(200).json({ ok: true, message: msg });
+}
+
+// POST /portal/messages/broadcast — admin sends one message into every active
+// investor's thread and emails each of them. Replies come back per-investor.
+async function postBroadcast(req, res) {
+  const session = verifyPortalSession(req);
+  if (!session || session.role !== 'admin') return res.status(401).json({ ok: false, message: 'Unauthorized' });
+  const body = await readJsonBody(req);
+  const text = String(body?.body || '').trim();
+  if (!text) return res.status(400).json({ ok: false, message: 'Message cannot be empty.' });
+
+  let registry; try { ({ registry } = await loadRegistry()); }
+  catch (err) { console.error('broadcast: registry load failed', err); return res.status(500).json({ ok: false, message: 'Server not configured.' }); }
+  const investors = registry.entries.filter(e => e.role === 'investor' && !e.deletedAt);
+  if (!investors.length) return res.status(400).json({ ok: false, message: 'No active investors to message.' });
+
+  let msgFile, msgFileId, drive;
+  try { ({ file: msgFile, fileId: msgFileId, drive } = await loadMessages()); }
+  catch (err) { console.error('broadcast: messages load failed', err); return res.status(500).json({ ok: false, message: 'Server not configured.' }); }
+
+  for (const inv of investors) {
+    appendMessage(msgFile, inv.email, { from: 'admin', authorEmail: session.email, body: text });
+  }
+  try { await saveMessages(drive, msgFileId, msgFile); }
+  catch (err) { console.error('broadcast: save failed', err); return res.status(500).json({ ok: false, message: 'Could not send messages.' }); }
+
+  // Email each investor (fire-and-forget).
+  for (const inv of investors) {
+    sendAdminReplyToInvestor({ to: inv.email, investorName: inv.name, snippet: text.slice(0, 280) })
+      .catch(err => console.warn('broadcast: notice failed for', inv.email, err));
+  }
+  return res.status(200).json({ ok: true, count: investors.length });
 }
 
 // ---------- Login ----------

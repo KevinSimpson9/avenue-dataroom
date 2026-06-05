@@ -590,8 +590,21 @@
       if (r.ok) { const d = await r.json(); threads = (d && d.threads) || []; }
     } catch {}
     host.innerHTML = `<div class="card">
-      <div class="card-head"><h2>Messages</h2></div>
-      ${threads.length ? `<ul class="doc-list">${threads.map(t => `
+      <div class="card-head">
+        <h2>Messages</h2>
+        <button class="add-btn" id="broadcastToggle" type="button">✉ Message everyone</button>
+      </div>
+      <div class="add-form" id="broadcastForm">
+        <h3>Message all active investors</h3>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 10px">Goes into every active investor's conversation and emails each of them. They can reply to you privately.</p>
+        <textarea id="broadcastBody" rows="4" style="width:100%;padding:10px 12px;background:var(--input-bg);border:1px solid var(--hairline);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical" placeholder="Write a message to all investors…"></textarea>
+        <div class="add-actions">
+          <button type="button" class="cancel-btn" id="broadcastCancel">Cancel</button>
+          <button type="button" class="add-btn" id="broadcastSend">Send to everyone</button>
+        </div>
+        <div class="err" id="broadcastErr"></div>
+      </div>
+      ${threads.length ? `<ul class="doc-list" style="margin-top:14px">${threads.map(t => `
         <li style="cursor:pointer" data-msg-open="${escape(t.email)}">
           <div class="avatar">${escape(initials(t.name || t.email))}</div>
           <div class="doc-info">
@@ -599,11 +612,36 @@
             <div class="doc-meta">${t.lastFrom === 'admin' ? 'You: ' : ''}${escape(t.lastSnippet || '')} · ${fmtDate(t.lastMessageAt)}</div>
           </div>
           <span style="color:var(--gold)">Open →</span>
-        </li>`).join('')}</ul>` : '<p style="color:var(--muted);font-size:13px;margin:0">No messages yet. Open an investor to start a conversation.</p>'}
+        </li>`).join('')}</ul>` : '<p style="color:var(--muted);font-size:13px;margin:14px 0 0">No conversations yet. Use “Message everyone” above, or open an investor to start one.</p>'}
     </div>`;
     host.querySelectorAll('[data-msg-open]').forEach(li => li.addEventListener('click', () => {
       window.location.search = '?email=' + encodeURIComponent(li.dataset.msgOpen);
     }));
+    document.getElementById('broadcastToggle').addEventListener('click', () => document.getElementById('broadcastForm').classList.toggle('open'));
+    document.getElementById('broadcastCancel').addEventListener('click', () => document.getElementById('broadcastForm').classList.remove('open'));
+    document.getElementById('broadcastSend').addEventListener('click', sendBroadcast);
+  }
+
+  async function sendBroadcast() {
+    const errEl = document.getElementById('broadcastErr'); errEl.textContent = '';
+    const body = document.getElementById('broadcastBody').value.trim();
+    if (!body) { errEl.textContent = 'Write a message first.'; return; }
+    const ok = await confirmDialog({
+      title: 'Message all investors?',
+      message: 'This sends the message to every active investor and emails each of them.',
+      confirmLabel: 'Send to everyone'
+    });
+    if (!ok) return;
+    const btn = document.getElementById('broadcastSend');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      const res = await fetch('/api/portal/messages/broadcast', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ body })
+      });
+      const data = await res.json();
+      if (data.ok) { toast(`Message sent to ${data.count} investor${data.count===1?'':'s'}.`, 'success'); loadInbox(); }
+      else { errEl.textContent = data.message || 'Could not send.'; btn.disabled = false; btn.textContent = 'Send to everyone'; }
+    } catch { errEl.textContent = 'Network error. Try again.'; btn.disabled = false; btn.textContent = 'Send to everyone'; }
   }
 
   function rowHtml(inv) {
