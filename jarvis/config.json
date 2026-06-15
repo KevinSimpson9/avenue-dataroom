@@ -1,0 +1,88 @@
+{
+  "agent_name": "Hermes",
+  "owner": {
+    "name": "Kevin",
+    "full_name": "Kevin Simpson",
+    "email_primary": "kevin@akcapital.fund",
+    "email_personal_admin": "simpsonsholdinggroup@gmail.com",
+    "phone": "+1 (606) 304-0607",
+    "timezone": "America/Chicago"
+  },
+  "business": {
+    "summary": "Kevin runs a multi-entity holdco: real estate deals (active + rental portfolio), service-business acquisitions (early funnel), an operating service biz (FerryPros), and a productized investor-data-room offering. Partner network includes Lukas Bondy (construction) and EA Princess Arandia.",
+    "entities": [
+      {"id": "ak-capital", "name": "AK Capital Investments", "kind": "holdco-operating"},
+      {"id": "shg", "name": "Simpsons Holding Group", "kind": "holdco-admin"},
+      {"id": "avenue-fh", "name": "The Avenue at Fountain Hills", "kind": "re-deal", "status": "raising", "target_raise_usd": 350000, "rate_apr": 0.20},
+      {"id": "4th-st-detroit", "name": "4th Street Midtown Detroit", "kind": "re-deal"},
+      {"id": "lincoln-7640", "name": "7640 South St, Lincoln NE", "kind": "re-deal", "status": "jv-signed-2026-06-14"},
+      {"id": "ferrypros", "name": "FerryPros", "kind": "operating-service-biz"},
+      {"id": "dataroom-saas", "name": "DataRoom-as-a-Service", "kind": "new-venture", "first_customer": "Iron Ranch Holdings / Stagecoach Capital / Wyndham Lakes"},
+      {"id": "rentals-ky", "name": "KY rental portfolio", "kind": "re-portfolio", "properties": ["Gibson Ave Lexington", "Debbie Lane Corbin", "Robbie Ridge Stanton", "Winter Park", "Dollar General", "Dale & Macey", "Hollyhill Dr", "Morhan Way", "SAEKA"]}
+    ],
+    "people": [
+      {"name": "Lukas Bondy", "role": "construction partner", "email": "bondysconstruction@gmail.com"},
+      {"name": "Princess Arandia", "role": "EA", "email": "princess@akcapital.fund"},
+      {"name": "Collin Schwartz", "role": "operator network (Leaven Wealth)", "email": "Collin@leavenwealth.com"}
+    ]
+  },
+  "tools_connected": [
+    "Gmail", "Google_Calendar", "Google_Drive", "Notion",
+    "Intuit_QuickBooks", "github", "Canva", "Miro"
+  ],
+  "tools_pending": {
+    "social_publisher": "Recommend Buffer for LinkedIn + TikTok + IG + FB. Marketing seat runs draft-only until connected.",
+    "higgsfield": "No MCP. Pipeline = Hermes writes script, you generate in Higgsfield UI with your avatar, drop MP4 into Drive /marketing/video-out/."
+  },
+  "rails": {
+    "external_send_requires_approval": true,
+    "spend_requires_approval": true,
+    "delete_requires_approval": true,
+    "public_post_requires_approval": true,
+    "auto_archive_promotional_email": true,
+    "respect_existing_gmail_label_workflow": true,
+    "delegate_to_ea_via_label": "!Princess/To Do"
+  },
+  "rhythm": {
+    "morning_brief_time": "06:30",
+    "morning_brief_tz": "America/Chicago",
+    "board_passes_per_day": 2,
+    "second_pass_time": "16:00"
+  },
+  "outcome_metric": {
+    "id": "cards-done-with-result-per-week",
+    "definition": "Number of cards that reach status=done with a real, written `result` field, per week. Vanity activity counts do not qualify. Switch to acquisition-stage-advance once month-1 baseline is set.",
+    "review_cadence": "weekly, Friday brief"
+  },
+  "marketing": {
+    "editorial_line": "Education only. Three pillars: (1) RE capital raises, (2) service-business acquisition, (3) operator tradecraft (data rooms, portals, deal hygiene). No lifestyle, no humble-brag.",
+    "channels": ["LinkedIn", "TikTok", "Instagram", "Facebook"],
+    "primary_channel": "LinkedIn",
+    "approval_surface": "morning_brief",
+    "publisher": "buffer-pending",
+    "video_pipeline": "script -> Higgsfield avatar (manual) -> Drive /marketing/video-out/ -> attached to post card"
+  },
+  "gmail_workflow_labels": {
+    "to_pay": "0. To Pay",
+    "to_respond": "1. To Respond",
+    "to_review": "2. To Review",
+    "waiting_on": "3. Waiting On",
+    "ea_inbox": "!Princess/To Do"
+  },
+  "seats": {
+    "structural": ["chief-of-staff", "operator", "analyst", "janitor"],
+    "domain": [
+      "ir-avenue",
+      "acquisitions",
+      "diligence",
+      "real-estate-portfolio",
+      "dataroom-saas",
+      "books",
+      "repo-portal",
+      "ea-liaison",
+      "marketing"
+    ]
+  },
+  "onboarded_at": "2026-06-15T23:10:00Z",
+  "onboarded_via": "Hermes interview, conducted on branch claude/cool-euler-etomki"
+}
