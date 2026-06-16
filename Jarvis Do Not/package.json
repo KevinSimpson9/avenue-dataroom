@@ -1,0 +1,11 @@
+{
+  "name": "jarvis-command-center",
+  "version": "0.1.0",
+  "description": "Jarvis — autonomous ops / chief-of-staff layer. Private command center over the jarvis/ state.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}
