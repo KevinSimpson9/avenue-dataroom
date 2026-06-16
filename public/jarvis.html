@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Jarvis · Command Center</title>
+<link rel="icon" href="/favicon.ico" />
+<style>
+  :root {
+    --bg: #0a0c10; --panel: #12161d; --panel-2: #161b24; --line: #232a35;
+    --ink: #e7ecf3; --muted: #8a94a6; --faint: #5b6473;
+    --accent: #5b8cff; --accent-dim: #2a3550;
+    --t1: #36d399; --t2: #fbbd23; --t3: #f87272;
+    --ok: #36d399; --warn: #fbbd23; --bad: #f87272;
+    --radius: 14px; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+         -webkit-font-smoothing: antialiased; line-height: 1.45; }
+  a { color: var(--accent); }
+
+  /* ---- gate ---- */
+  #gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .gate-card { width: 100%; max-width: 360px; background: var(--panel); border: 1px solid var(--line);
+               border-radius: var(--radius); padding: 28px; text-align: center; }
+  .brand { font-weight: 700; letter-spacing: .5px; font-size: 22px; }
+  .brand span { color: var(--accent); }
+  .gate-card p { color: var(--muted); font-size: 13px; margin: 6px 0 20px; }
+  input[type=password] { width: 100%; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line);
+               border-radius: 10px; color: var(--ink); font-size: 15px; }
+  button.primary { margin-top: 12px; width: 100%; padding: 12px; background: var(--accent); color: #fff;
+               border: 0; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; }
+  button.primary:hover { filter: brightness(1.08); }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 10px; }
+
+  /* ---- app ---- */
+  #app { display: none; max-width: 1100px; margin: 0 auto; padding: 20px 16px 80px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+               padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+  header.top .left { display: flex; align-items: baseline; gap: 12px; }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block;
+         margin-right: 6px; box-shadow: 0 0 8px var(--ok); }
+
+  .grid { display: grid; gap: 14px; }
+  .metrics { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 18px; }
+  .metric { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .metric .n { font-size: 28px; font-weight: 700; }
+  .metric .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; margin-top: 2px; }
+
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--faint);
+                   margin: 26px 0 10px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .briefing { white-space: pre-wrap; font-size: 14px; color: #cdd5e1; max-height: 340px; overflow:auto; }
+  .briefing h1, .briefing h2 { font-size: 15px; }
+
+  .seats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .seat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+          font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .seat .s-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .seat.structural .s-dot { background: var(--faint); }
+
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+  .tab { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+         color: var(--muted); font-size: 13px; cursor: pointer; }
+  .tab.active { background: var(--accent-dim); color: var(--ink); border-color: var(--accent); }
+
+  .cards { gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card .row1 { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .card .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+           color: var(--muted); font-family: var(--mono); }
+  .tier { font-weight: 700; }
+  .tier.t1 { color: var(--t1); border-color: var(--t1); }
+  .tier.t2 { color: var(--t2); border-color: var(--t2); }
+  .tier.t3 { color: var(--t3); border-color: var(--t3); }
+  .st { text-transform: capitalize; }
+  .st.pending { color: var(--accent); border-color: var(--accent-dim); }
+  .st.approved { color: var(--ok); border-color: var(--ok); }
+  .st.review { color: var(--warn); border-color: var(--warn); }
+  .st.done { color: var(--faint); }
+  .st.dismissed, .st.archived { color: var(--faint); }
+  .card .why { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .card .result { color: #b9e6cf; font-size: 13px; margin-top: 8px; border-left: 2px solid var(--ok); padding-left: 10px; }
+  .card .actions { display: flex; gap: 8px; margin-top: 14px; }
+  .btn { padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
+  .btn.approve { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.dismiss { background: transparent; color: var(--muted); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .empty { color: var(--faint); font-size: 14px; padding: 24px; text-align: center; }
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel-2);
+           border: 1px solid var(--line); color: var(--ink); padding: 10px 16px; border-radius: 10px;
+           font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  .logout { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 8px;
+            padding: 6px 12px; font-size: 12px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form class="gate-card" id="gateForm">
+    <div class="brand">JARVIS<span>.</span></div>
+    <p>Command Center — private</p>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" autofocus />
+    <button class="primary" type="submit">Enter</button>
+    <div class="err" id="gateErr"></div>
+  </form>
+</div>
+
+<div id="app">
+  <header class="top">
+    <div class="left">
+      <div class="brand" id="agentName">JARVIS<span>.</span></div>
+      <div class="sub"><span class="dot"></span><span id="ownerLine">standing by</span></div>
+    </div>
+    <button class="logout" id="refreshBtn">Refresh</button>
+  </header>
+
+  <div class="grid metrics" id="metrics"></div>
+
+  <div class="section-title">Latest Briefing</div>
+  <div class="panel briefing" id="briefing"></div>
+
+  <div class="section-title">The Board · Seats</div>
+  <div class="grid seats" id="seats"></div>
+
+  <div class="section-title">Cards</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="grid cards" id="cards"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let DATA = null, FILTER = 'pending';
+
+async function unlock(e) {
+  e.preventDefault();
+  $('#gateErr').textContent = '';
+  const r = await fetch('/api/jarvis-unlock', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ password: $('#pw').value })
+  });
+  const j = await r.json();
+  if (j.ok) { boot(); }
+  else { $('#gateErr').textContent = j.message || 'Incorrect password.'; }
+}
+
+async function load() {
+  const r = await fetch('/api/jarvis');
+  if (r.status === 401) { showGate(); return null; }
+  return r.json();
+}
+
+function showGate(){ $('#gate').style.display='grid'; $('#app').style.display='none'; }
+function showApp(){ $('#gate').style.display='none'; $('#app').style.display='block'; }
+
+async function boot() {
+  const data = await load();
+  if (!data) return;
+  DATA = data;
+  showApp();
+  render();
+}
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+
+function render() {
+  const { config, cards, briefing, capabilities } = DATA;
+
+  if (config) {
+    $('#agentName').innerHTML = (config.agent_name || 'Jarvis').toUpperCase() + '<span>.</span>';
+    const o = config.owner || {};
+    $('#ownerLine').textContent = `${o.name || ''} · ${(config.business?.entities?.length||0)} entities · ${capabilities.writeBack ? 'live approve' : 'read-only'}`;
+  }
+
+  // metrics
+  const counts = cards.reduce((a,c)=>{a[c.status]=(a[c.status]||0)+1;return a;},{});
+  const doneWithResult = cards.filter(c=>c.status==='done' && c.result && c.result.trim()).length;
+  const metrics = [
+    ['Pending', counts.pending||0],
+    ['Needs you', (counts.review||0)+(counts.approved||0)],
+    ['Done w/ result', doneWithResult],
+    ['Seats', (config?.seats?.structural?.length||0)+(config?.seats?.domain?.length||0)],
+  ];
+  $('#metrics').innerHTML = metrics.map(([l,n])=>`<div class="metric"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  // briefing
+  $('#briefing').textContent = briefing ? stripMd(briefing.markdown) : 'No briefing yet. Run /board in chat.';
+
+  // seats
+  const struct = (config?.seats?.structural)||[], dom=(config?.seats?.domain)||[];
+  $('#seats').innerHTML =
+    struct.map(s=>`<div class="seat structural"><span class="s-dot"></span>${s}</div>`).join('') +
+    dom.map(s=>`<div class="seat"><span class="s-dot"></span>${s}</div>`).join('');
+
+  // tabs
+  const statuses = ['pending','review','approved','done','all'];
+  $('#tabs').innerHTML = statuses.map(s=>{
+    const n = s==='all'? cards.length : (counts[s]||0);
+    return `<div class="tab ${s===FILTER?'active':''}" data-f="${s}">${s} ${n?`· ${n}`:''}</div>`;
+  }).join('');
+  $('#tabs').querySelectorAll('.tab').forEach(t=>t.onclick=()=>{FILTER=t.dataset.f;render();});
+
+  // cards
+  const list = cards.filter(c=>FILTER==='all'?true:c.status===FILTER);
+  $('#cards').innerHTML = list.length ? list.map(renderCard).join('')
+    : `<div class="empty">No ${FILTER} cards.</div>`;
+  $('#cards').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.file,b));
+}
+
+function renderCard(c) {
+  const tier = c.tier ? `<span class="badge tier t${c.tier}">TIER ${c.tier}</span>` : '';
+  const canApprove = c.status==='pending';
+  const actions = canApprove ? `<div class="actions">
+      <button class="btn approve" data-act="approve" data-file="${c.file}">Approve</button>
+      <button class="btn dismiss" data-act="dismiss" data-file="${c.file}">Dismiss</button>
+    </div>` : '';
+  return `<div class="card">
+    <div class="row1"><h3>${esc(c.title)}</h3></div>
+    <div class="meta">
+      ${tier}
+      <span class="badge st ${c.status}">${c.status}</span>
+      <span class="badge">${esc(c.seat)}</span>
+      ${c.entity?`<span class="badge">${esc(c.entity)}</span>`:''}
+      ${c.created?`<span class="badge">${esc(c.created)}</span>`:''}
+    </div>
+    ${c.why?`<div class="why">${esc(c.why)}</div>`:''}
+    ${c.result?`<div class="result">${esc(c.result)}</div>`:''}
+    ${actions}
+  </div>`;
+}
+
+async function act(action, file, btn) {
+  btn.disabled = true;
+  const r = await fetch('/api/jarvis', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action, file })
+  });
+  const j = await r.json();
+  if (j.ok) { toast(`${file} → ${j.status}`); boot(); }
+  else { toast(j.message || 'Failed'); btn.disabled=false; }
+}
+
+function stripMd(md){ return md.replace(/^#+\s/gm,'').replace(/\*\*/g,'').replace(/\|/g,' '); }
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+$('#gateForm').addEventListener('submit', unlock);
+$('#refreshBtn').addEventListener('click', boot);
+
+// try existing session first
+boot();
+</script>
+</body>
+</html>

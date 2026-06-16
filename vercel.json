@@ -5,10 +5,14 @@
     { "source": "/index.html", "destination": "/api/index" },
     { "source": "/room", "destination": "/api/room" },
     { "source": "/room.html", "destination": "/api/room" },
+    { "source": "/jarvis", "destination": "/jarvis.html" },
     { "source": "/portal", "destination": "/api/portal/index" },
     { "source": "/portal.html", "destination": "/api/portal/index" },
     { "source": "/portal/:rest*", "destination": "/api/portal/:rest*" }
   ],
+  "functions": {
+    "api/jarvis.js": { "includeFiles": "jarvis/**" }
+  },
   "headers": [
     {
       "source": "/(.*)",
