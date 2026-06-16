@@ -3,7 +3,7 @@ id: card-0002
 title: Reply to Geoffrey @ Iron Ranch with v2 data-room next steps
 seat: dataroom-saas
 tier: 2
-status: pending
+status: review
 created: 2026-06-15
 entity: dataroom-saas
 client: iron-ranch-stagecoach
@@ -15,7 +15,7 @@ action: |
   3. Lists the 4 things needed from him: GitHub login, Vercel login, Drive folder access, list of doc file IDs to embed
   4. Closes with a clear ask: "want me to spin up v2 by end of week?"
   Tier-2: produce as Gmail draft, do not send.
-result:
+result: Gmail draft created (id r6295735706874693614) in the existing thread with Geoffrey. Proposes v2 deployment, lists the 4 logins needed, asks for end-of-week target. Waiting on Kevin to send.
 ---
 
 Background:
