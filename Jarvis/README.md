@@ -16,7 +16,7 @@ morning **brief**, executes the approved ones, and reports back honestly.
 ## File layout (Vercel-ready as-is)
 
 ```
-Jarvis Do Not/                  ← this folder; becomes the new repo root
+Jarvis/                  ← this folder; becomes the new repo root
 ├── CLAUDE.md                   the Jarvis constitution (master prompt)
 ├── README.md                   this file
 ├── package.json                "type": "module", no runtime deps
@@ -64,8 +64,8 @@ Jarvis Do Not/                  ← this folder; becomes the new repo root
    ```bash
    # somewhere outside avenue-dataroom:
    mkdir jarvis-command-center && cd jarvis-command-center
-   # copy everything inside "Jarvis Do Not/" (including dotfiles) into here
-   cp -R "/path/to/avenue-dataroom/Jarvis Do Not/." .
+   # copy everything inside "Jarvis/" (including dotfiles) into here
+   cp -R "/path/to/avenue-dataroom/Jarvis/." .
    git init && git branch -M main
    git add -A
    git commit -m "Initial Jarvis command center"
@@ -95,7 +95,7 @@ Jarvis Do Not/                  ← this folder; becomes the new repo root
 5. **Optional: custom domain.** Vercel → Settings → Domains → add e.g.
    `jarvis.akcapital.fund`. Point DNS as Vercel instructs; SSL is automatic.
 
-6. **Delete `Jarvis Do Not/` from `avenue-dataroom`** once you've confirmed the standalone repo deploys and looks right.
+6. **Delete `Jarvis/` from `avenue-dataroom`** once you've confirmed the standalone repo deploys and looks right.
 
 ---
 
