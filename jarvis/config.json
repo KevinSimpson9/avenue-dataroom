@@ -1,5 +1,5 @@
 {
-  "agent_name": "Hermes",
+  "agent_name": "Jarvis",
   "owner": {
     "name": "Kevin",
     "full_name": "Kevin Simpson",
@@ -32,7 +32,7 @@
   ],
   "tools_pending": {
     "social_publisher": "Recommend Buffer for LinkedIn + TikTok + IG + FB. Marketing seat runs draft-only until connected.",
-    "higgsfield": "No MCP. Pipeline = Hermes writes script, you generate in Higgsfield UI with your avatar, drop MP4 into Drive /marketing/video-out/."
+    "higgsfield": "No MCP. Pipeline = Jarvis writes script, you generate in Higgsfield UI with your avatar, drop MP4 into Drive /marketing/video-out/."
   },
   "rails": {
     "external_send_requires_approval": true,
@@ -84,5 +84,5 @@
     ]
   },
   "onboarded_at": "2026-06-15T23:10:00Z",
-  "onboarded_via": "Hermes interview, conducted on branch claude/cool-euler-etomki"
+  "onboarded_via": "Jarvis interview, conducted on branch claude/cool-euler-etomki"
 }
